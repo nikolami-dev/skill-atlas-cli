@@ -12,6 +12,7 @@ permissions:
 jobs:
   cli:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
 
@@ -36,6 +37,7 @@ jobs:
 
   webui:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: webui
@@ -61,6 +63,7 @@ jobs:
   # pinned container gives identical rendering on every run; baselines only ever come from it.
   visual:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     container:
       image: mcr.microsoft.com/playwright:v1.63.0-noble
       options: --user 1001
@@ -96,6 +99,7 @@ jobs:
   # sticky PR comment up to date. Not a required check; approval happens via the PR label.
   visual-report:
     needs: visual
+    timeout-minutes: 10
     if: always() && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     permissions:

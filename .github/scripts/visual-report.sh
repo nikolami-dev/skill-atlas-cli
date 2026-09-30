@@ -3,7 +3,7 @@
 # Turns the demo video into a GIF, publishes it and any screenshot differences (expected / actual /
 # diff) to the pr-assets branch, and creates or updates one sticky comment on the PR.
 # Env: GH_TOKEN REPO BRANCH SHA RESULT RUN_URL; artifact downloaded to ./visual-results.
-set -euo pipefail
+set -euxo pipefail  # -x: every step shows in the job log, so a hang is visible
 
 marker="<!-- visual-report -->"
 label="approve-screenshots"
@@ -23,8 +23,12 @@ out=$(mktemp -d)
 # Demo GIF from the test's video (palette keeps it sharp and small).
 video=$(find "$results" -name video.webm 2>/dev/null | head -1 || true)
 if [ -n "$video" ]; then
-  command -v ffmpeg >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg >/dev/null; }
-  ffmpeg -y -loglevel error -i "$video" \
+  if ! command -v ffmpeg >/dev/null; then
+    # Bounded: apt can otherwise wait silently for the runner's package lock.
+    timeout 180 sudo apt-get -o DPkg::Lock::Timeout=60 update -qq
+    timeout 180 sudo apt-get -o DPkg::Lock::Timeout=60 install -y -qq ffmpeg >/dev/null
+  fi
+  timeout 120 ffmpeg -nostdin -y -loglevel error -i "$video" \
     -vf "fps=10,scale=960:-1:flags=lanczos,split[a][b];[a]palettegen[p];[b][p]paletteuse" -loop 0 "$out/demo.gif"
 fi
 
@@ -51,14 +55,14 @@ done < <(find "$results" -name '*-actual.png' 2>/dev/null | sort)
 
 # Publish the images to pr-assets (media only, never merged, no CI). Retry on concurrent pushes.
 if [ -n "$(ls -A "$out")" ]; then
-  git clone -q --depth 1 --branch pr-assets "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" assets
+  timeout 120 git clone -q --depth 1 --branch pr-assets "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" assets
   mkdir -p "assets/$dir" && cp "$out"/* "assets/$dir/"
   git -C assets -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
     add -A && git -C assets -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
     commit -q -m "Visual report for $BRANCH at $short" || true
   for attempt in 1 2 3 4 5; do
-    git -C assets push -q origin pr-assets && break
-    git -C assets pull -q --rebase origin pr-assets
+    timeout 60 git -C assets push -q origin pr-assets && break
+    timeout 60 git -C assets pull -q --rebase origin pr-assets
     [ "$attempt" = 5 ] && { echo "Could not push to pr-assets"; exit 1; }
   done
 fi

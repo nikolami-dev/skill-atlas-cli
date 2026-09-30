@@ -21,6 +21,7 @@ jobs:
   update:
     if: github.event.label.name == 'approve-screenshots' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     container:
       image: mcr.microsoft.com/playwright:v1.63.0-noble
       options: --user 1001
@@ -52,6 +53,7 @@ jobs:
 
   commit:
     needs: update
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     permissions:
       contents: write
