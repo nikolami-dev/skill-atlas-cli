@@ -101,5 +101,12 @@ All except Kotlin are pinned to a commit via `/tree/<sha>` so upstream changes c
 
 ## 6. Definition of Done
 - All tests pass locally
-- Pushed; CI is green for this commit
-- Red CI: read the logs, fix, push again
+- A pull request is open and CI is green for its latest commit
+- Red CI: read the logs, fix, push to the same branch again
+
+## 7. Change workflow (applies to the whole repo, incl. `webui/`)
+- Every change goes through a pull request. NEVER push directly to `main`, even with admin rights.
+- Steps: branch off the latest `main` → commit → push the branch → `gh pr create` → watch CI.
+- `main` is protected: the `cli` and `webui` CI checks must pass and the branch must be up to
+  date with `main` before the PR can be merged.
+- One logical change per PR. The PR description says what changed and how it was verified.
