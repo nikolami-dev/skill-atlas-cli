@@ -14,8 +14,10 @@ import (
 
 // Run with: go test -tags e2e -v ./...
 //
-// All tests except Kotlin are pinned to a commit so upstream changes can't break them.
+// All tests are pinned to a commit so upstream changes can't break them, except
+// TestScanDefaultBranch, which checks the plain-URL (default branch) path with a loose assertion.
 const (
+	kotlinURL  = "https://github.com/JetBrains/kotlin/tree/197871e7256b81028d7dbce42eaee642a36900d0"
 	mpsURL     = "https://github.com/JetBrains/MPS/tree/49d37b63488a0a8e42eb0130cb867fd508f398ac"
 	koogURL    = "https://github.com/JetBrains/koog/tree/16d83270f8a7f25358ae0165466f14e70416c428"
 	androidURL = "https://github.com/JetBrains/android/tree/4f0a5e1cb653c29f81c6b77eff885a6e81622cf4"
@@ -43,7 +45,7 @@ func scanJSON(t *testing.T, url string) ([]Skill, []byte, string) {
 }
 
 func TestScanKotlin(t *testing.T) {
-	skills, stdout, home := scanJSON(t, "https://github.com/JetBrains/kotlin")
+	skills, stdout, home := scanJSON(t, kotlinURL)
 	if len(skills) != 6 {
 		t.Fatalf("got %d skills, want 6: %+v", len(skills), skills)
 	}
@@ -59,6 +61,15 @@ func TestScanKotlin(t *testing.T) {
 	}
 	if !bytes.Equal(stored, stdout) {
 		t.Error("stored file does not match stdout")
+	}
+}
+
+// A URL without /tree/<ref> makes the CLI look up the repo's default branch. Unpinned, so it only
+// asserts that some skill is found, which survives upstream skills being added or removed.
+func TestScanDefaultBranch(t *testing.T) {
+	skills, _, _ := scanJSON(t, "https://github.com/JetBrains/kotlin")
+	if len(skills) == 0 {
+		t.Fatal("found no skills on the default branch of JetBrains/kotlin")
 	}
 }
 

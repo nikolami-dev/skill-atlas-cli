@@ -89,11 +89,13 @@ agent skill files it contains (e.g. `SKILL.md`), and lists them with their metad
 ### E2E tests
 Behind build tag `e2e` (`go test -tags e2e ./...`). Every skill in every test must have
 non-empty `name`, `path`, `paths`, `categories`, `commit_sha`, `commit_date`.
-All except Kotlin are pinned to a commit via `/tree/<sha>` so upstream changes can't break them.
+All are pinned to a commit via `/tree/<sha>` so upstream changes can't break them, except the
+"Default branch" case, which uses a plain URL and only a loose assertion.
 
 | Case | URL | Expect |
 |------|-----|--------|
-| Basic | `https://github.com/JetBrains/kotlin` | Exactly 6 skills, all under `.claude/skills/`. `~/.skill-atlas/JetBrains-kotlin.json` exists and matches stdout. |
+| Basic | `https://github.com/JetBrains/kotlin/tree/197871e7256b81028d7dbce42eaee642a36900d0` | Exactly 6 skills, all under `.claude/skills/`. `~/.skill-atlas/JetBrains-kotlin.json` exists and matches stdout. |
+| Default branch | `https://github.com/JetBrains/kotlin` (no `/tree/`, so the default branch is looked up) | At least 1 skill found. Unpinned, so no exact count. |
 | Duplicates in `.claude` and `.agents` | `https://github.com/JetBrains/MPS/tree/49d37b63488a0a8e42eb0130cb867fd508f398ac` | Exactly 41 skills, no name listed twice; each has both `.agents/skills/<dir>/SKILL.md` and `.claude/skills/<dir>/SKILL.md` in `paths`. |
 | Part of the product | same MPS commit | Exactly 32 skills have a path under `plugins/mcp-tools/resources/jetbrains/mps/agents/mcp/skills/`; exactly those have `product` in `categories`. |
 | Test data | `https://github.com/JetBrains/koog/tree/16d83270f8a7f25358ae0165466f14e70416c428` | Exactly 4 skills: 2 under `.claude/skills/` with `[agent]`, 2 under `integration-tests/src/jvmTest/resources/skills/` with `[test]`. `docs/docs/skills.md` (no frontmatter) is not listed. |
