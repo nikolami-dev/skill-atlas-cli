@@ -97,6 +97,32 @@ header select {
   font-weight: 600;
 }
 
+.filter {
+  margin-bottom: 8px;
+}
+
+.filter input {
+  width: 100%;
+  font: inherit;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.filter-status {
+  margin: 4px 2px 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.sidebar .filter-status a {
+  display: inline;
+  padding: 0;
+  color: var(--accent);
+}
+
 .tag {
   display: inline-block;
   margin-left: 6px;

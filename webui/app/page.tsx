@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import Markdown, { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { atlasDir, fetchSkillContent, githubUrl, listRepos, loadSkills, stripFrontmatter, type Skill } from "@/lib/atlas";
+import { matchesSkill } from "@/lib/filter";
 import Shell from "./Shell";
 
 export default async function Page({ searchParams }: PageProps<"/">) {
@@ -35,14 +36,28 @@ export default async function Page({ searchParams }: PageProps<"/">) {
   const selected = typeof sp.skill === "string" ? skills.find((s) => s.path === sp.skill) : undefined;
   if (sp.skill && !selected) notFound();
 
+  const rawQ = typeof sp.q === "string" ? sp.q : "";
+  const q = rawQ.trim();
+  const shown = q ? await filterSkills(skills, q) : skills;
+
   return (
     <Shell repos={repos} repo={repo}>
       <nav className="sidebar">
+        <form action="/" className="filter">
+          <input type="hidden" name="repo" value={repo} />
+          <input type="search" name="q" defaultValue={rawQ} placeholder="Filter skills…" aria-label="Filter skills" />
+          {q && (
+            <p className="filter-status">
+              {shown.length} of {skills.length} skills · <Link href={{ pathname: "/", query: { repo } }}>Clear</Link>
+            </p>
+          )}
+        </form>
         {skills.length === 0 && <p className="empty">No skills found</p>}
-        {skills.map((s) => (
+        {skills.length > 0 && shown.length === 0 && <p className="empty">No skills match &quot;{q}&quot;</p>}
+        {shown.map((s) => (
           <Link
             key={s.path}
-            href={{ query: { repo, skill: s.path } }}
+            href={{ query: q ? { repo, skill: s.path, q } : { repo, skill: s.path } }}
             className={s === selected ? "active" : undefined}
             title={s.path}
           >
@@ -65,6 +80,13 @@ export default async function Page({ searchParams }: PageProps<"/">) {
       </main>
     </Shell>
   );
+}
+
+// filterSkills keeps the skills matching q, fetching all their contents in parallel.
+// A skill whose content can't be fetched is matched on its metadata only.
+async function filterSkills(skills: Skill[], q: string): Promise<Skill[]> {
+  const contents = await Promise.all(skills.map((s) => fetchSkillContent(s).catch(() => "")));
+  return skills.filter((s, i) => matchesSkill(s, contents[i], q));
 }
 
 function SkillHeader({ s }: { s: Skill }) {
