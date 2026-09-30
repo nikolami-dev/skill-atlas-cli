@@ -23,7 +23,14 @@ Last updated: 2026-09-30
   line what else that excludes (there: paths and categories too), and update the spec's rule,
   out-of-scope list, tests and DoD numbers together.
 - **Pull requests only.** Never push to `main`; see `.spec/cli.md` §7 (Change workflow). Rules:
-  - one logical change per PR, and the description says what changed and how it was verified;
+  - one logical change per PR;
+  - the description fills in every section of `.github/pull_request_template.md` (Summary, Visual
+    demonstration, Architecture changes, Tests, Limitations), writing `n/a — <reason>` rather than
+    deleting a section. For `gh pr create --body-file`, start from a copy of the template, because
+    GitHub only prefills it in the browser;
+  - for a user-visible change, the agent records the demo GIF with the `recording-pr-demos` skill
+    (`.claude/skills/recording-pr-demos/`). Pushing GIFs to the `pr-assets` branch is the one allowed
+    push outside a PR: that branch holds only media, is never merged, and has no CI;
   - if CI is red, read the logs, fix, and push to the same branch;
   - if two PRs conflict, rebase the second onto `origin/main` after the first is merged, rerun the
     tests, and `git push --force-with-lease`, only ever to feature branches.

@@ -111,4 +111,7 @@ All are pinned to a commit via `/tree/<sha>` so upstream changes can't break the
 - Steps: branch off the latest `main` → commit → push the branch → `gh pr create` → watch CI.
 - `main` is protected: the `cli` and `webui` CI checks must pass and the branch must be up to
   date with `main` before the PR can be merged.
-- One logical change per PR. The PR description says what changed and how it was verified.
+- One logical change per PR. The PR description follows `.github/pull_request_template.md`
+  (Summary, Visual demonstration, Architecture changes, Tests, Limitations). For user-visible
+  changes, record the demo GIF with the `recording-pr-demos` skill; the GIF goes on the `pr-assets`
+  branch (media only, never merged).
