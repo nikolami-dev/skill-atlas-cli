@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import Markdown, { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { atlasDir, fetchSkillContent, githubUrl, listRepos, loadSkills, stripFrontmatter, type Skill } from "@/lib/atlas";
+import { matchesSkill } from "@/lib/filter";
 import Shell from "./Shell";
 
 export default async function Page({ searchParams }: PageProps<"/">) {
@@ -35,14 +36,28 @@ export default async function Page({ searchParams }: PageProps<"/">) {
   const selected = typeof sp.skill === "string" ? skills.find((s) => s.path === sp.skill) : undefined;
   if (sp.skill && !selected) notFound();
 
+  const rawQ = typeof sp.q === "string" ? sp.q : "";
+  const q = rawQ.trim();
+  const shown = q ? skills.filter((s) => matchesSkill(s, q)) : skills;
+
   return (
     <Shell repos={repos} repo={repo}>
       <nav className="sidebar">
+        <form action="/" className="filter">
+          <input type="hidden" name="repo" value={repo} />
+          <input type="search" name="q" defaultValue={rawQ} placeholder="Filter skills…" aria-label="Filter skills" />
+          {q && (
+            <p className="filter-status">
+              {shown.length} of {skills.length} skills · <Link href={{ pathname: "/", query: { repo } }}>Clear</Link>
+            </p>
+          )}
+        </form>
         {skills.length === 0 && <p className="empty">No skills found</p>}
-        {skills.map((s) => (
+        {skills.length > 0 && shown.length === 0 && <p className="empty">No skills match &quot;{q}&quot;</p>}
+        {shown.map((s) => (
           <Link
             key={s.path}
-            href={{ query: { repo, skill: s.path } }}
+            href={{ query: q ? { repo, skill: s.path, q } : { repo, skill: s.path } }}
             className={s === selected ? "active" : undefined}
             title={s.path}
           >

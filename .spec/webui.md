@@ -84,22 +84,19 @@ Two pages, both driven by query params:
   repo with 0 skills → "No skills found"; no skill selected → "Select a skill".
 
 ### 4.3 Feature: filter skills
-Filter the sidebar by a keyword that may appear anywhere in a skill.
+Filter the sidebar by a keyword in a skill's name or description.
 - **UI**: a text input at the top of the sidebar, placeholder `Filter skills…`, prefilled with `q`.
   It is a plain GET `<form>` (fields `repo` and `q`), so it works without client JS; submitting
   navigates to `/?repo=…&q=…`. When `q` is set, show `N of M skills` under the input and a
   "Clear" link (`/?repo=…`).
-- **Matching**: case-insensitive substring match of the trimmed `q` against ALL of: `name`,
-  `description`, every entry of `paths` (or `path` if `paths` is missing), every category, and the
-  full raw SKILL.md content (frontmatter included). A skill matches if any of them contains `q`.
-- **Content**: fetched with `fetchSkillContent` (`lib/atlas.ts`), all skills of the repo in
-  parallel, only when `q` is non-blank. If a skill's content can't be fetched, match on its
-  metadata only; the page must not fail.
+- **Matching**: case-insensitive substring match of the trimmed `q` against the skill's `name` and
+  `description` (both from the index) ONLY. A skill matches if either contains `q`. Paths,
+  categories and the SKILL.md content are NOT searched, so filtering never fetches content.
 - **Links**: while filtering, sidebar skill links keep `q` (`/?repo=…&skill=…&q=…`), so the filter
   survives selecting a skill. The selected skill stays shown in main even if it doesn't match.
 - **Empty result**: `No skills match "{q}"`.
 - **Code**: matching logic is a pure function in `lib/filter.ts`
-  (`matchesSkill(s: Skill, content: string, q: string): boolean`), unit-tested in `lib/filter.test.ts`.
+  (`matchesSkill(s: Skill, q: string): boolean`), unit-tested in `lib/filter.test.ts`.
 
 ### 4.4 Feature: similar skills
 Compare the SKILL.md files of the selected repo with each other and show how similar they are.
@@ -136,14 +133,14 @@ Compare the SKILL.md files of the selected repo with each other and show how sim
 
 ## 5. Out of scope
 - Running scans from the UI, editing skills, deployment.
-- Filter: regex/fuzzy matching, ranking by relevance. Similarity: comparing across repos,
+- Filter: searching paths, categories or SKILL.md content; regex/fuzzy matching, ranking by relevance. Similarity: comparing across repos,
   semantic/embedding similarity, configurable threshold.
 
 ## 6. Testing
 - `npm test`: unit tests (Node test runner) for index loading — repo listing, unknown/traversal
   repo names rejected, invalid JSON reported as an error, frontmatter stripping, raw-content URL building.
-- `lib/filter.test.ts`: matches in each field (name, description, a non-primary path, category,
-  content only), case-insensitive, trimmed `q`, blank `q` matches everything, no match.
+- `lib/filter.test.ts`: matches in name, matches in description, does NOT match on path or
+  category only, case-insensitive, trimmed `q`, blank `q` matches everything, no match.
 - `lib/similar.test.ts`: identical texts → 1, disjoint texts → 0, a pair sharing rare words scores
   higher than a pair sharing only words that appear in every document, every pair returned once,
   empty text → 0, scores within 0..1.
@@ -155,8 +152,8 @@ Compare the SKILL.md files of the selected repo with each other and show how sim
 - CI (`.github/workflows/ci.yml`, job `webui`) runs `npm ci`, `npm test` and `npm run build`; it is green for the latest commit of the pull request.
 - The change is in a pull request, never pushed directly to `main` (see `.spec/cli.md` §7, Change workflow).
 - The page renders the existing `JetBrains-kotlin.json` index with skill content loaded from GitHub.
-- Filter: on `JetBrains-kotlin`, `q=gradle` (and `q=GRADLE`) lists exactly 4 skills:
-  `build-bump-gradle-version`, `build-tools-bump-gradle-api`, `build-tools-bump-gradle-in-tests`,
-  and `analysis-api-mark-internal-apis` (which matches only in its body).
+- Filter: on `JetBrains-kotlin`, `q=gradle` (and `q=GRADLE`) lists exactly 3 skills:
+  `build-bump-gradle-version`, `build-tools-bump-gradle-api`, `build-tools-bump-gradle-in-tests`.
+  `analysis-api-mark-internal-apis` is NOT listed ("gradle" appears only in its body).
 - Similar: `/similar?repo=JetBrains-kotlin` shows 8 pairs ≥ 30%; the top 3 are the pairs among the
   three Gradle-bump skills (76%, 75%, 68%).
