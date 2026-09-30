@@ -86,5 +86,6 @@ Single page `/` driven by query params:
 
 ## 7. Definition of Done
 - `npm test` and `npm run build` pass locally.
-- CI (`.github/workflows/ci.yml`, job `webui`) runs `npm ci`, `npm test` and `npm run build`; it is green for the pushed commit.
+- CI (`.github/workflows/ci.yml`, job `webui`) runs `npm ci`, `npm test` and `npm run build`; it is green for the latest commit of the pull request.
+- The change is in a pull request, never pushed directly to `main` (see `.spec/cli.md` §7, Change workflow).
 - The page renders the existing `JetBrains-kotlin.json` index with skill content loaded from GitHub.
