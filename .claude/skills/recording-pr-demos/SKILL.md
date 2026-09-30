@@ -35,8 +35,10 @@ is a `test.step`: it **asserts the expected state first**, then takes a named sc
 4. **Embed the GIF** from that comment in the PR description, under "Visual demonstration", with a
    one-line caption.
 5. **Hand the diff to the reviewer.** If screenshots changed on purpose, say which ones and why in
-   the PR. The reviewer approves by adding the label **`approve-screenshots`**. CI then regenerates
-   the baselines, commits them to the branch, and reruns. **Never add that label yourself**:
+   the PR. The reviewer approves with two deliberate clicks: first the label
+   **`approve-screenshots`**, after which CI regenerates the baselines and commits them to the branch;
+   then **Approve and run workflows**, because GitHub holds CI runs for bot commits until a
+   maintainer approves them. **Never add that label or approve that run yourself**:
    approving visual changes is the reviewer's decision. To reject, the reviewer asks for a fix, and
    you push one.
 6. **After an approval,** run `git pull` before pushing again, because the bot committed to your branch.

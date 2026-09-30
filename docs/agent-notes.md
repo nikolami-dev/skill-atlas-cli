@@ -34,9 +34,11 @@ Last updated: 2026-09-30
     check, and posts the differences in a sticky PR comment. CLI demos are still recorded locally.
     Pushing GIFs to the `pr-assets` branch is the one allowed push outside a PR: that branch holds
     only media, is never merged, and has no CI;
-  - **screenshot changes are approved only by the reviewer**, who adds the label
-    `approve-screenshots` (CI then commits the new baselines and reruns). Agents never add that
-    label, and never update baselines locally; they explain intended visual changes in the PR;
+  - **screenshot changes are approved only by the reviewer**, with two clicks: the label
+    `approve-screenshots` (CI commits the new baselines to the branch), then **Approve and run
+    workflows** on the CI run GitHub holds for that bot commit. A `workflow_dispatch` run can't
+    replace that click, because it doesn't count as the PR's checks. Agents never add the label, never
+    approve runs, and never update baselines locally; they explain intended visual changes in the PR;
   - if CI is red, read the logs, fix, and push to the same branch;
   - if two PRs conflict, rebase the second onto `origin/main` after the first is merged, rerun the
     tests, and `git push --force-with-lease`, only ever to feature branches.

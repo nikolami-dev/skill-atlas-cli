@@ -5,9 +5,6 @@ on:
   push:
     branches: [main]
   pull_request:
-  # Lets the approve-screenshots workflow re-run CI after committing new baselines: commits pushed
-  # with GITHUB_TOKEN don't trigger workflows, but workflow_dispatch does.
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -99,7 +96,7 @@ jobs:
   # sticky PR comment up to date. Not a required check; approval happens via the PR label.
   visual-report:
     needs: visual
-    if: always() && (github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository)
+    if: always() && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -117,7 +114,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-          BRANCH: ${{ github.head_ref || github.ref_name }}
-          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          BRANCH: ${{ github.head_ref }}
+          SHA: ${{ github.event.pull_request.head.sha }}
           RESULT: ${{ needs.visual.result }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

@@ -239,7 +239,8 @@ The home page shows all indexed repositories at once, as cards, with an instant 
   - Screenshots are compared only in CI, inside `mcr.microsoft.com/playwright:<same version>-noble`;
     locally they are ignored (macOS renders differently). The test's video is the PR's demo GIF.
   - Differences are shown as expected / actual / diff in a sticky PR comment. The reviewer accepts
-    them with the label `approve-screenshots`, which regenerates and commits the baselines in CI.
+    them with the label `approve-screenshots` (CI regenerates and commits the baselines), then clicks
+    "Approve and run workflows" for the CI run GitHub holds on that bot commit.
 - Manual: `npm run dev` with at least two indexes, check the gallery (cards, instant search, the
   URL updating without history entries, Clear), a card opening its repository, the breadcrumb,
   navbar, sidebar, filter, Similar page, content render, and the old-URL redirects;

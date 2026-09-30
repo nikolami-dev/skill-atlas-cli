@@ -93,7 +93,7 @@ if [ "$count" -gt 0 ]; then
 | Screenshot | Expected (baseline) | Actual (this commit) | Diff |
 |---|---|---|---|
 $rows
-**Approve** these changes: add the label \`$label\` — CI regenerates the baselines, commits them to this branch and re-runs.
+**Approve** these changes: add the label \`$label\` — CI regenerates the baselines and commits them to this branch; then click **Approve and run workflows** on the held CI run for that commit.
 **Reject**: don't approve; fix the code and push.
 "
 fi

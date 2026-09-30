@@ -116,5 +116,5 @@ All are pinned to a commit via `/tree/<sha>` so upstream changes can't break the
   changes, follow the `recording-pr-demos` skill; GIFs go on the `pr-assets` branch (media only,
   never merged).
 - Required checks on `main`: `cli`, `webui` and `visual` (the web UI screenshot comparison, see
-  `.spec/webui.md` §6). Visual changes are accepted only when the reviewer adds the label
-  `approve-screenshots`.
+  `.spec/webui.md` §6). Visual changes are accepted only by the reviewer: the label
+  `approve-screenshots`, then "Approve and run workflows" for the bot's baseline commit.

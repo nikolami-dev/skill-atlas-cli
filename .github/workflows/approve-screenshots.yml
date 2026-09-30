@@ -1,8 +1,10 @@
 name: Approve screenshots
 
 # Adding the label `approve-screenshots` to a PR accepts its visual changes: the baselines are
-# regenerated in the same pinned Playwright container as the `visual` CI job, committed to the PR
-# branch, and CI is dispatched again (commits pushed with GITHUB_TOKEN don't trigger workflows).
+# regenerated in the same pinned Playwright container as the `visual` CI job and committed to the PR
+# branch. GitHub then holds the CI run for that bot commit until a maintainer clicks
+# "Approve and run workflows" — the second, deliberate approval click. (A workflow_dispatch run does
+# not count as the PR's checks, so there is no way around that click without a personal token.)
 # Approving is the reviewer's decision; agents must never add this label themselves.
 on:
   pull_request:
@@ -54,7 +56,6 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-      actions: write
     env:
       GH_TOKEN: ${{ github.token }}
       PR: ${{ github.event.pull_request.number }}
@@ -93,8 +94,8 @@ jobs:
             git push -q origin "HEAD:$BRANCH"
           fi
 
-      - name: Remove the label and re-run CI
+      - name: Remove the label and ask for the CI approval click
         run: |
           gh pr edit "$PR" --remove-label approve-screenshots
-          gh workflow run ci.yml --ref "$BRANCH"
-          gh pr comment "$PR" --body "✅ Visual changes approved by @$APPROVER; baselines committed as \`$(git rev-parse --short HEAD)\`. CI was dispatched for the new commit."
+          gh pr comment "$PR" --body "✅ Visual changes approved by @$APPROVER; baselines committed as \`$(git rev-parse --short HEAD)\`.
+          **Next:** GitHub holds CI for this bot commit — open the PR's checks and click **Approve and run workflows**. The \`visual\` check then compares against the new baselines."
