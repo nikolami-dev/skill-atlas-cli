@@ -14,28 +14,33 @@ const s: Skill = {
   commit_date: "",
 };
 
-test("matches each field", () => {
-  assert.ok(matchesSkill(s, "", "gradle"), "name");
-  assert.ok(matchesSkill(s, "", "wrapper"), "description");
-  assert.ok(matchesSkill(s, "", "mirror"), "non-primary path");
-  assert.ok(matchesSkill(s, "", "product"), "category");
-  assert.ok(matchesSkill(s, "---\nname: x\n---\nuses KaImplementationDetail", "kaimplementation"), "content only");
-  assert.ok(matchesSkill(s, "---\nfoo: frontvalue\n---\n", "frontvalue"), "frontmatter content");
-  assert.ok(matchesSkill({ ...s, paths: undefined }, "", "skills/bump"), "path when paths is missing");
+test("matches in name", () => {
+  assert.ok(matchesSkill(s, "gradle"));
+});
+
+test("matches in description", () => {
+  assert.ok(matchesSkill(s, "wrapper"));
+});
+
+test("does not match on path or category only", () => {
+  assert.equal(matchesSkill(s, "mirror"), false, "non-primary path");
+  assert.equal(matchesSkill(s, ".claude/skills"), false, "primary path");
+  assert.equal(matchesSkill({ ...s, paths: undefined }, "skills/bump"), false, "path when paths is missing");
+  assert.equal(matchesSkill(s, "product"), false, "category");
 });
 
 test("case-insensitive and trimmed", () => {
-  assert.ok(matchesSkill(s, "", "GRADLE"));
-  assert.ok(matchesSkill(s, "Body Text", "body text"));
-  assert.ok(matchesSkill(s, "", "  gradle \t"));
+  assert.ok(matchesSkill(s, "GRADLE"));
+  assert.ok(matchesSkill(s, "WrApPeR"));
+  assert.ok(matchesSkill(s, "  gradle \t"));
 });
 
 test("blank q matches everything", () => {
-  assert.ok(matchesSkill(s, "", ""));
-  assert.ok(matchesSkill(s, "", "   "));
+  assert.ok(matchesSkill(s, ""));
+  assert.ok(matchesSkill(s, "   "));
 });
 
 test("no match", () => {
-  assert.equal(matchesSkill(s, "some body", "maven"), false);
-  assert.equal(matchesSkill({ ...s, categories: undefined, description: "" }, "", "test"), false);
+  assert.equal(matchesSkill(s, "maven"), false);
+  assert.equal(matchesSkill({ ...s, description: "" }, "wrapper"), false);
 });

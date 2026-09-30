@@ -38,7 +38,7 @@ export default async function Page({ searchParams }: PageProps<"/">) {
 
   const rawQ = typeof sp.q === "string" ? sp.q : "";
   const q = rawQ.trim();
-  const shown = q ? await filterSkills(skills, q) : skills;
+  const shown = q ? skills.filter((s) => matchesSkill(s, q)) : skills;
 
   return (
     <Shell repos={repos} repo={repo}>
@@ -80,13 +80,6 @@ export default async function Page({ searchParams }: PageProps<"/">) {
       </main>
     </Shell>
   );
-}
-
-// filterSkills keeps the skills matching q, fetching all their contents in parallel.
-// A skill whose content can't be fetched is matched on its metadata only.
-async function filterSkills(skills: Skill[], q: string): Promise<Skill[]> {
-  const contents = await Promise.all(skills.map((s) => fetchSkillContent(s).catch(() => "")));
-  return skills.filter((s, i) => matchesSkill(s, contents[i], q));
 }
 
 function SkillHeader({ s }: { s: Skill }) {
