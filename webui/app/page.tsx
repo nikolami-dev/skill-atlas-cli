@@ -3,8 +3,8 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import Markdown, { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { atlasDir, githubUrl, listRepos, loadSkills, rawUrl, stripFrontmatter, type Skill } from "@/lib/atlas";
-import RepoSelect from "./RepoSelect";
+import { atlasDir, fetchSkillContent, githubUrl, listRepos, loadSkills, stripFrontmatter, type Skill } from "@/lib/atlas";
+import Shell from "./Shell";
 
 export default async function Page({ searchParams }: PageProps<"/">) {
   const sp = await searchParams;
@@ -67,18 +67,6 @@ export default async function Page({ searchParams }: PageProps<"/">) {
   );
 }
 
-function Shell({ repos, repo, children }: { repos: string[]; repo: string; children: React.ReactNode }) {
-  return (
-    <div className="app">
-      <header>
-        <Link href="/" className="title">Skill Atlas</Link>
-        {repos.length > 1 ? <RepoSelect repos={repos} current={repo} /> : <span>{repo}</span>}
-      </header>
-      {children}
-    </div>
-  );
-}
-
 function SkillHeader({ s }: { s: Skill }) {
   const copies = s.paths?.filter((p) => p !== s.path) ?? [];
   return (
@@ -117,10 +105,7 @@ function SkillHeader({ s }: { s: Skill }) {
 async function SkillBody({ s }: { s: Skill }) {
   let md: string;
   try {
-    // Pinned to commit_sha, so the content never changes and can be cached forever.
-    const res = await fetch(rawUrl(s), { cache: s.commit_sha ? "force-cache" : "no-store" });
-    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-    md = await res.text();
+    md = await fetchSkillContent(s);
   } catch (e) {
     return (
       <p className="empty error">

@@ -43,5 +43,13 @@ const escapePath = (p: string) => p.split("/").map(encodeURIComponent).join("/")
 export const rawUrl = (s: Skill) => `https://raw.githubusercontent.com/${s.repo}/${ref(s)}/${escapePath(s.path)}`;
 export const githubUrl = (s: Skill, path = s.path) => `https://github.com/${s.repo}/blob/${ref(s)}/${escapePath(path)}`;
 
+// fetchSkillContent returns the raw SKILL.md text from GitHub. Throws on network or HTTP errors.
+export async function fetchSkillContent(s: Skill): Promise<string> {
+  // Pinned to commit_sha, so the content never changes and can be cached forever.
+  const res = await fetch(rawUrl(s), { cache: s.commit_sha ? "force-cache" : "no-store" });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.text();
+}
+
 // stripFrontmatter removes a leading "---" YAML block.
 export const stripFrontmatter = (md: string) => md.replace(/^---\r?\n(?:[\s\S]*?\r?\n)?---[ \t]*(?:\r?\n|$)/, "");
