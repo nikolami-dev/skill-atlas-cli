@@ -255,7 +255,7 @@ header .navbar a.active {
   display: block;
   height: 100%;
   padding: 16px;
-  border: 1px solid var(--border);
+  border: 3px solid var(--border);
   border-radius: 8px;
   color: var(--fg);
   text-decoration: none;
