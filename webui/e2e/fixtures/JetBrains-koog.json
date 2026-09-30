@@ -1,0 +1,58 @@
+[
+  {
+    "repo": "JetBrains/koog",
+    "name": "add-java-code-snippets-in-docs",
+    "description": "Use when the user asks to add Java tabs/examples to mkdocs docs that already have Kotlin examples (files under docs/docs/**.md using === \"Kotlin\" / Knit INCLUDE+SUFFIX blocks). Handles mkdocs-material tabs, Knit directives, @JavaAPI bridge methods, and JVM factory classes.",
+    "path": ".claude/skills/add-java-code-snippets-in-docs/SKILL.md",
+    "paths": [
+      ".claude/skills/add-java-code-snippets-in-docs/SKILL.md"
+    ],
+    "categories": [
+      "agent"
+    ],
+    "commit_sha": "ce5ce39a4675cfa766694288eaf14f8bd0421eaa",
+    "commit_date": "2026-05-18T09:28:08Z"
+  },
+  {
+    "repo": "JetBrains/koog",
+    "name": "split-jvm-nonjvm",
+    "description": "Splits a class or several classes in the common source set commonMain into JVM and non-JVM parts into jvmCommonMain and nonJvmCommonMain. \nThis is used to provide some JVM-specific functionality for a class on JVM targets (e.g. Kotlin/JVM or Java backend or Android).",
+    "path": ".claude/skills/split-jvm-nonjvm/SKILL.md",
+    "paths": [
+      ".claude/skills/split-jvm-nonjvm/SKILL.md"
+    ],
+    "categories": [
+      "agent"
+    ],
+    "commit_sha": "8d5ae552b9a0927767997ea7ceb47d58b6793a72",
+    "commit_date": "2026-03-25T10:57:16Z"
+  },
+  {
+    "repo": "JetBrains/koog",
+    "name": "arithmetic-evaluator",
+    "description": "Evaluate arithmetic expressions and return numeric results. Use when a user asks an arithmetic question, requests calculation, or provides a math expression involving numbers, parentheses, and arithmetic operators.",
+    "path": "integration-tests/src/jvmTest/resources/skills/arithmetic-evaluator/SKILL.md",
+    "paths": [
+      "integration-tests/src/jvmTest/resources/skills/arithmetic-evaluator/SKILL.md"
+    ],
+    "categories": [
+      "test"
+    ],
+    "commit_sha": "a6335272fd7481b3e0daefcacbad3e0c6e4cb4e2",
+    "commit_date": "2026-08-20T00:53:49Z"
+  },
+  {
+    "repo": "JetBrains/koog",
+    "name": "weather-retrieval",
+    "description": "Retrieve current weather information for a specific location. Use when a user asks for weather, temperature, conditions, forecast summary, or climate details for a city, region, or place.",
+    "path": "integration-tests/src/jvmTest/resources/skills/weather-retrieval/SKILL.md",
+    "paths": [
+      "integration-tests/src/jvmTest/resources/skills/weather-retrieval/SKILL.md"
+    ],
+    "categories": [
+      "test"
+    ],
+    "commit_sha": "a6335272fd7481b3e0daefcacbad3e0c6e4cb4e2",
+    "commit_date": "2026-08-20T00:53:49Z"
+  }
+]

@@ -5,6 +5,9 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Lets the approve-screenshots workflow re-run CI after committing new baselines: commits pushed
+  # with GITHUB_TOKEN don't trigger workflows, but workflow_dispatch does.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -56,3 +59,65 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  # The PR demo as a deterministic Playwright test with screenshot comparison (webui/e2e). The
+  # pinned container gives identical rendering on every run; baselines only ever come from it.
+  visual:
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      options: --user 1001
+    defaults:
+      run:
+        working-directory: webui
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: webui/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Demo and screenshot comparison
+        run: npm run test:visual
+
+      - name: Upload results (video, screenshots, diffs, report)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-results
+          path: |
+            webui/test-results/
+            webui/playwright-report/
+          retention-days: 14
+
+  # Publishes the demo GIF and any screenshot differences to the pr-assets branch and keeps one
+  # sticky PR comment up to date. Not a required check; approval happens via the PR label.
+  visual-report:
+    needs: visual
+    if: always() && (github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: visual-results
+          path: visual-results
+
+      - name: Publish demo and differences
+        run: bash .github/scripts/visual-report.sh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ github.head_ref || github.ref_name }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          RESULT: ${{ needs.visual.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
