@@ -5,6 +5,7 @@ import Markdown, { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { atlasDir, fetchSkillContent, githubUrl, listRepos, loadSkills, stripFrontmatter, type Skill } from "@/lib/atlas";
 import { matchesSkill } from "@/lib/filter";
+import { percent, skillSimilarities } from "@/lib/similar";
 import Shell from "./Shell";
 
 export default async function Page({ searchParams }: PageProps<"/">) {
@@ -70,6 +71,9 @@ export default async function Page({ searchParams }: PageProps<"/">) {
         {selected ? (
           <>
             <SkillHeader s={selected} />
+            <Suspense key={"similar " + selected.path} fallback={<p className="empty">Loading similar skills…</p>}>
+              <SimilarSkills repo={repo} s={selected} skills={skills} />
+            </Suspense>
             <Suspense key={selected.path} fallback={<p className="empty">Loading…</p>}>
               <SkillBody s={selected} />
             </Suspense>
@@ -114,6 +118,35 @@ function SkillHeader({ s }: { s: Skill }) {
         )}
       </dl>
     </>
+  );
+}
+
+// SimilarSkills lists the top 5 other skills of the repo by similarity to s; 0% is omitted.
+async function SimilarSkills({ repo, s, skills }: { repo: string; s: Skill; skills: Skill[] }) {
+  const { pairs } = await skillSimilarities(skills);
+  const byPath = new Map(skills.map((x) => [x.path, x]));
+  const top = pairs
+    .filter((p) => p.a === s.path || p.b === s.path)
+    .map((p) => ({ other: byPath.get(p.a === s.path ? p.b : p.a)!, pct: percent(p.score) }))
+    .filter((r) => r.pct > 0)
+    .sort((x, y) => y.pct - x.pct || x.other.name.localeCompare(y.other.name))
+    .slice(0, 5);
+  return (
+    <section className="similar">
+      <h2>Similar skills</h2>
+      {top.length === 0 ? (
+        <p className="empty">No similar skills</p>
+      ) : (
+        <ul>
+          {top.map((r) => (
+            <li key={r.other.path}>
+              <Link href={{ pathname: "/", query: { repo, skill: r.other.path } }}>{r.other.name}</Link>{" "}
+              <span className="pct">{r.pct}%</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 
