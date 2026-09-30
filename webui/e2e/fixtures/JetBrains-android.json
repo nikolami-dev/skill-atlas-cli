@@ -1,0 +1,86 @@
+[
+  {
+    "repo": "JetBrains/android",
+    "name": "android-studio-development",
+    "description": "Specialist in Android Studio plugin development. Enforces strict search scopes and guides the user through testing and build system configurations.",
+    "path": "agent/skills/android-studio-development/SKILL.md",
+    "paths": [
+      "agent/skills/android-studio-development/SKILL.md"
+    ],
+    "categories": [
+      "agent"
+    ],
+    "commit_sha": "7898e3d389766ab931498830e489897a77329492",
+    "commit_date": "2026-07-15T11:21:32Z"
+  },
+  {
+    "repo": "JetBrains/android",
+    "name": "android-studio-diagnostics-analysis",
+    "description": "Analyzes Android Studio diagnostic logs and thread dumps to identify UI freezes, lock contention, and system configuration issues. Use this when a user provides a DiagnosticsReport or attaches a bug report with thread dumps to a Buganizer issue.",
+    "path": "agent/skills/android-studio-diagnostics-analysis/SKILL.md",
+    "paths": [
+      "agent/skills/android-studio-diagnostics-analysis/SKILL.md"
+    ],
+    "categories": [
+      "agent"
+    ],
+    "commit_sha": "758b2e7365e05e6aea91e8bbe1589d70654387a2",
+    "commit_date": "2026-09-16T16:27:14Z"
+  },
+  {
+    "repo": "JetBrains/android",
+    "name": "write-evals",
+    "description": "Expertise in building new AI agent evaluations (evals) for Android Studio. Use when creating new test scenarios, defining agent prompts, or adding verification logic for agent-based features.",
+    "path": "agent/skills/android-studio-evals/SKILL.md",
+    "paths": [
+      "agent/skills/android-studio-evals/SKILL.md"
+    ],
+    "categories": [
+      "agent"
+    ],
+    "commit_sha": "a62468b057a93cbb010fdc36b4dc96c9946a0c0f",
+    "commit_date": "2026-09-07T12:44:28Z"
+  },
+  {
+    "repo": "JetBrains/android",
+    "name": "jewel-swing-interop",
+    "description": "Integrate Jewel Compose UI with Swing in IntelliJ Platform plugins or desktop apps. Use when requests involve ComposePanel/JComponent hosting, ToolWindow tabs, SwingBridgeTheme, enableNewSwingCompositing, LocalComponent, popup rendering, clipboard/action-system bridges, or AWT/Compose conversion helpers.",
+    "path": "agent/skills/jewel-swing-interop/SKILL.md",
+    "paths": [
+      "agent/skills/jewel-swing-interop/SKILL.md"
+    ],
+    "categories": [
+      "agent"
+    ],
+    "commit_sha": "28b36ffcd8e814fa4d9536b729b1ab5b86be2224",
+    "commit_date": "2026-09-21T15:13:29Z"
+  },
+  {
+    "repo": "JetBrains/android",
+    "name": "jewel-ui",
+    "description": "Build or modify Compose Desktop UI using JetBrains Jewel components, theming, and icon loading. Use when requests mention Jewel, IntUiTheme, SwingBridgeTheme, JewelTheme, ComponentStyling, DecoratedWindow, DefaultButton, Tabs, AllIconsKeys, IconKey, PainterHint, or building IntelliJ-styled Compose UI in standalone apps or IntelliJ Platform plugins. For embedding Compose into Swing (ComposePanel, ToolWindow tabs, compositing flags), use jewel-swing-interop.",
+    "path": "agent/skills/jewel-ui/SKILL.md",
+    "paths": [
+      "agent/skills/jewel-ui/SKILL.md"
+    ],
+    "categories": [
+      "agent"
+    ],
+    "commit_sha": "28b36ffcd8e814fa4d9536b729b1ab5b86be2224",
+    "commit_date": "2026-09-21T15:13:29Z"
+  },
+  {
+    "repo": "JetBrains/android",
+    "name": "writing-lint-checks",
+    "description": "Helps to write a new lint check under `/tools/base/lint/libs/lint-checks`.",
+    "path": "agent/skills/writing-lint-checks/SKILL.md",
+    "paths": [
+      "agent/skills/writing-lint-checks/SKILL.md"
+    ],
+    "categories": [
+      "agent"
+    ],
+    "commit_sha": "4d9ec3e52b338aa1c962c1ff0421cc62db5c73af",
+    "commit_date": "2026-09-21T15:13:26Z"
+  }
+]

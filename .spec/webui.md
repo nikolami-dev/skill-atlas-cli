@@ -228,6 +228,19 @@ The home page shows all indexed repositories at once, as cards, with an instant 
   - `matchRepo`: match by display name, by file name, by skill name, by skill description; NOT by
     a path or category only; case-insensitive and trimmed `q`; blank `q` matches all; the
     `matchingSkills` count; `byName` true/false.
+- **Visual / demo test** (`npm run test:visual`, CI job `visual`, required):
+  `e2e/demo.spec.ts` with Playwright (`@playwright/test`, version pinned exactly).
+  - It runs the DoD scenario on the committed fixtures `e2e/fixtures/` (the four pinned scans of §7):
+    gallery → search `gradle` → repository → skill page → Similar → Back.
+  - Each key moment asserts its state, then takes a named screenshot (`expect.soft(...).toHaveScreenshot`),
+    compared with `e2e/__screenshots__/`.
+  - Deterministic: fixed viewport 1280×720, scale 1, `en-US`, UTC, animations off; no sleeps before a
+    screenshot.
+  - Screenshots are compared only in CI, inside `mcr.microsoft.com/playwright:<same version>-noble`;
+    locally they are ignored (macOS renders differently). The test's video is the PR's demo GIF.
+  - Differences are shown as expected / actual / diff in a sticky PR comment. The reviewer accepts
+    them with the label `approve-screenshots` (CI regenerates and commits the baselines), then clicks
+    "Approve and run workflows" for the CI run GitHub holds on that bot commit.
 - Manual: `npm run dev` with at least two indexes, check the gallery (cards, instant search, the
   URL updating without history entries, Clear), a card opening its repository, the breadcrumb,
   navbar, sidebar, filter, Similar page, content render, and the old-URL redirects;

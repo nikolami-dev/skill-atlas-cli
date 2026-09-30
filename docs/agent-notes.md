@@ -28,9 +28,17 @@ Last updated: 2026-09-30
     demonstration, Architecture changes, Tests, Limitations), writing `n/a — <reason>` rather than
     deleting a section. For `gh pr create --body-file`, start from a copy of the template, because
     GitHub only prefills it in the browser;
-  - for a user-visible change, the agent records the demo GIF with the `recording-pr-demos` skill
-    (`.claude/skills/recording-pr-demos/`). Pushing GIFs to the `pr-assets` branch is the one allowed
-    push outside a PR: that branch holds only media, is never merged, and has no CI;
+  - for a user-visible change, follow the `recording-pr-demos` skill
+    (`.claude/skills/recording-pr-demos/`). Web UI demos are the Playwright test
+    `webui/e2e/demo.spec.ts`: CI records the GIF and compares screenshots in the required `visual`
+    check, and posts the differences in a sticky PR comment. CLI demos are still recorded locally.
+    Pushing GIFs to the `pr-assets` branch is the one allowed push outside a PR: that branch holds
+    only media, is never merged, and has no CI;
+  - **screenshot changes are approved only by the reviewer**, with two clicks: the label
+    `approve-screenshots` (CI commits the new baselines to the branch), then **Approve and run
+    workflows** on the CI run GitHub holds for that bot commit. A `workflow_dispatch` run can't
+    replace that click, because it doesn't count as the PR's checks. Agents never add the label, never
+    approve runs, and never update baselines locally; they explain intended visual changes in the PR;
   - if CI is red, read the logs, fix, and push to the same branch;
   - if two PRs conflict, rebase the second onto `origin/main` after the first is merged, rerun the
     tests, and `git push --force-with-lease`, only ever to feature branches.

@@ -1,0 +1,86 @@
+[
+  {
+    "repo": "JetBrains/kotlin",
+    "name": "analysis-api-create-cherry-pick-issue",
+    "description": "Create a KTIJ cherry-pick tracking issue for a KT fix that needs to be cherry-picked to an IntelliJ branch. Use when cherry-picking Analysis API fixes.",
+    "path": ".claude/skills/analysis-api-create-cherry-pick-issue/SKILL.md",
+    "paths": [
+      ".claude/skills/analysis-api-create-cherry-pick-issue/SKILL.md"
+    ],
+    "categories": [
+      "agent"
+    ],
+    "commit_sha": "79ee1133517f18e42521a772e180d58ee8f98d7d",
+    "commit_date": "2026-04-02T16:00:33Z"
+  },
+  {
+    "repo": "JetBrains/kotlin",
+    "name": "analysis-api-mark-internal-apis",
+    "description": "Drive the per-module internal-API codebase test, then refine the suggested annotations down to `internal` (or up to `@KaImplementationDetail`) based on actual external usage",
+    "path": ".claude/skills/analysis-api-mark-internal-apis/SKILL.md",
+    "paths": [
+      ".claude/skills/analysis-api-mark-internal-apis/SKILL.md"
+    ],
+    "categories": [
+      "agent"
+    ],
+    "commit_sha": "6a2ddf02a3827f83a560e9cece7c4c3fcfdfc3b7",
+    "commit_date": "2026-09-01T20:48:22Z"
+  },
+  {
+    "repo": "JetBrains/kotlin",
+    "name": "build-bump-gradle-version",
+    "description": "Bumps the Gradle wrapper/distribution version that BUILDS the Kotlin project itself — the version behind `./gradlew`, defined by `gradle/wrapper/gradle-wrapper.properties`. Covers the wrapper regeneration and the version-specific fallout that follows it: removed/deprecated Gradle DSL, dependency-verification metadata, the Gradle Module Metadata fixtures, and the KGP functional tests. This is DISTINCT from the two sibling skills — it is NOT `build-tools-bump-gradle-api` (which bumps GRADLE_COMMON_COMPILE_API_VERSION, the API that plugins compile against) and NOT `build-tools-bump-gradle-in-tests` (which extends the KGP integration-test version matrix). Manual invocation only: a full run downloads a distribution, rewrites `gradle/verification-metadata.xml`, and drives `publish`, `testClasses` and `functionalTest` — hours of wall clock and a heavily mutated checkout — so it starts only when the user explicitly asks for `/build-bump-gradle-version`.",
+    "path": ".claude/skills/build-bump-gradle-version/SKILL.md",
+    "paths": [
+      ".claude/skills/build-bump-gradle-version/SKILL.md"
+    ],
+    "categories": [
+      "agent"
+    ],
+    "commit_sha": "4dfdfc0480bfb138dfc446213f8569910ae714ba",
+    "commit_date": "2026-09-29T17:03:14Z"
+  },
+  {
+    "repo": "JetBrains/kotlin",
+    "name": "build-tools-bump-gradle-api",
+    "description": "Bumps the Gradle API version that Kotlin Gradle plugins are compiled against in the Kotlin compiler repository. Use this skill whenever the user asks to upgrade, bump, or update the Gradle compile API version, Gradle plugin API version, or GRADLE_COMMON_COMPILE_API_VERSION. Also use it when the user says something like \"update KGP to compile against Gradle X.Y.Z\" or \"bump Gradle API to X.Y\" or \"we need to support Gradle X.Y in the plugin\".",
+    "path": ".claude/skills/build-tools-bump-gradle-api/SKILL.md",
+    "paths": [
+      ".claude/skills/build-tools-bump-gradle-api/SKILL.md"
+    ],
+    "categories": [
+      "agent"
+    ],
+    "commit_sha": "b1435a0a2c48e018ea2119fc485d5c7ee6fdc6f3",
+    "commit_date": "2026-08-25T18:59:09Z"
+  },
+  {
+    "repo": "JetBrains/kotlin",
+    "name": "build-tools-bump-gradle-in-tests",
+    "description": "Bump the maximum supported Gradle version in the `kotlin-gradle-plugin-integration-tests` project. Use this whenever the user asks to bump Gradle in integration tests, add a new Gradle X.Y.Z to the test matrix, update `MAX_SUPPORTED` Gradle, \"run tests against the new Gradle release\", or anything else that sounds like extending the integration test matrix to a newer Gradle. The procedure spans four touch points across three files that must stay in lock-step (`TestVersions.kt`, `build.gradle.kts`, `GradleCompatibilityIT.kt`); reach for this skill even when the user mentions only one of those files, because editing by hand routinely desyncs them.",
+    "path": ".claude/skills/build-tools-bump-gradle-in-tests/SKILL.md",
+    "paths": [
+      ".claude/skills/build-tools-bump-gradle-in-tests/SKILL.md"
+    ],
+    "categories": [
+      "agent"
+    ],
+    "commit_sha": "b1435a0a2c48e018ea2119fc485d5c7ee6fdc6f3",
+    "commit_date": "2026-08-25T18:59:09Z"
+  },
+  {
+    "repo": "JetBrains/kotlin",
+    "name": "minimize-repro-for-diagnostic-test",
+    "description": "Makes a minimal reproduction of a Frontend-related bug as a diagnostic test",
+    "path": ".claude/skills/minimize-repro-for-diagnostic-test/SKILL.md",
+    "paths": [
+      ".claude/skills/minimize-repro-for-diagnostic-test/SKILL.md"
+    ],
+    "categories": [
+      "agent"
+    ],
+    "commit_sha": "41348d7560037962ac0b8c00f8de8d4ddfc76a5e",
+    "commit_date": "2026-08-05T12:07:41Z"
+  }
+]

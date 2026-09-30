@@ -113,5 +113,8 @@ All are pinned to a commit via `/tree/<sha>` so upstream changes can't break the
   date with `main` before the PR can be merged.
 - One logical change per PR. The PR description follows `.github/pull_request_template.md`
   (Summary, Visual demonstration, Architecture changes, Tests, Limitations). For user-visible
-  changes, record the demo GIF with the `recording-pr-demos` skill; the GIF goes on the `pr-assets`
-  branch (media only, never merged).
+  changes, follow the `recording-pr-demos` skill; GIFs go on the `pr-assets` branch (media only,
+  never merged).
+- Required checks on `main`: `cli`, `webui` and `visual` (the web UI screenshot comparison, see
+  `.spec/webui.md` §6). Visual changes are accepted only by the reviewer: the label
+  `approve-screenshots`, then "Approve and run workflows" for the bot's baseline commit.

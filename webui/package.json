@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "node --test \"lib/*.test.ts\""
+    "test": "node --test \"lib/*.test.ts\"",
+    "test:visual": "playwright test",
+    "test:visual:update": "playwright test --update-snapshots=all"
   },
   "dependencies": {
     "next": "16.3.7",
@@ -16,6 +18,7 @@
     "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
+    "@playwright/test": "1.63.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

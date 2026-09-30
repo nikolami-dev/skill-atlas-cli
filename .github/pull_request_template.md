@@ -10,11 +10,12 @@ One logical change per PR. Never push to main (see .spec/cli.md §7).
 
 ## Visual demonstration
 <!--
-A GIF, recorded by the agent, showing the change working. Use the `recording-pr-demos` skill
-(.claude/skills/recording-pr-demos/SKILL.md): a browser recording for web UI changes, a terminal
-recording for CLI changes.
-Embed it from the pr-assets branch:
-![demo](https://raw.githubusercontent.com/nikolami-dev/skill-atlas-cli/pr-assets/<branch>/demo.gif)
+A GIF showing the change working (see the `recording-pr-demos` skill).
+Web UI: CI records it. Extend webui/e2e/demo.spec.ts, push, and embed the GIF from the
+"Visual check" comment that CI posts on this PR:
+![demo](https://raw.githubusercontent.com/nikolami-dev/skill-atlas-cli/pr-assets/<branch>/ci/<sha>/demo.gif)
+Screenshots changed on purpose? Name them here; the reviewer approves with the label `approve-screenshots`.
+CLI: record locally with the skill's vhs tape.
 No user-visible change (docs, CI, refactor)? Write "n/a — <reason>".
 -->
 
