@@ -14,16 +14,20 @@ const page = await context.newPage();
 const pause = (ms = 1200) => page.waitForTimeout(ms); // let the viewer see each state
 
 // ---- steps: replace with the feature being demonstrated ----
-// `repo=` is the index file name without `.json` (JetBrains-kotlin.json -> JetBrains-kotlin).
+// `/` is the repository gallery; a repository lives at `/repos/{index file name without .json}`
+// (JetBrains-kotlin.json -> /repos/JetBrains-kotlin).
 // Before each pause, wait for the new state: a URL (waitForURL), a selector (locator.waitFor), or,
 // when only content or order changes, a condition, e.g.
-//   await page.waitForFunction(() => document.querySelector("nav.sidebar a")?.textContent?.startsWith("build-"));
-await page.goto(`${base}/?repo=JetBrains-kotlin`);
-await page.locator("nav.sidebar a").first().waitFor();
+//   await page.waitForFunction(() => document.querySelectorAll("a.card").length === 1);
+await page.goto(`${base}/`);
+await page.locator("a.card").first().waitFor();
 await pause();
-await page.locator('input[name="q"]').pressSequentially("gradle", { delay: 120 });
-await page.keyboard.press("Enter");
-await page.waitForURL(/q=gradle/);
+await page.getByRole("searchbox", { name: "Search repositories and skills" }).pressSequentially("gradle", { delay: 150 });
+await page.waitForFunction(() => document.querySelectorAll("a.card").length === 1);
+await pause(1800);
+await page.locator("a.card").first().click();
+await page.waitForURL(/\/repos\/[^/?]+\?q=gradle/);
+await page.locator("nav.sidebar a").first().waitFor();
 await pause(1800);
 await page.getByRole("link", { name: "Similar", exact: true }).click();
 await page.waitForURL(/\/similar/);

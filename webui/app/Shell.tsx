@@ -1,36 +1,42 @@
 import Link from "next/link";
-import RepoSelect from "./RepoSelect";
+import { repoPath } from "@/lib/repos";
 
-const pages = [
-  { href: "/", label: "Skills" },
-  { href: "/similar", label: "Similar" },
-] as const;
-
-// Shell is the page frame shared by all pages: header (title, navbar, repo selector) and the page body.
-// page is the current page's path; its navbar link is highlighted.
-export default function Shell({ repos, repo, page = "/", children }: {
-  repos: string[];
-  repo: string;
-  page?: (typeof pages)[number]["href"];
+// Shell is the page frame shared by all pages. The title always links to the gallery. Inside a
+// repository (repo = index file name) it adds a breadcrumb with the display name and the
+// Skills | Similar navbar, highlighting the current page.
+export default function Shell({ repo, name, page = "skills", children }: {
+  repo?: string;
+  name?: string;
+  page?: "skills" | "similar";
   children: React.ReactNode;
 }) {
+  const links = repo
+    ? [
+        { key: "skills", href: repoPath(repo), label: "Skills" },
+        { key: "similar", href: `${repoPath(repo)}/similar`, label: "Similar" },
+      ]
+    : [];
   return (
     <div className="app">
       <header>
         <Link href="/" className="title">Skill Atlas</Link>
-        <nav className="navbar">
-          {pages.map((p) => (
-            <Link
-              key={p.href}
-              href={repo ? { pathname: p.href, query: { repo } } : p.href}
-              className={p.href === page ? "active" : undefined}
-              aria-current={p.href === page ? "page" : undefined}
-            >
-              {p.label}
-            </Link>
-          ))}
-        </nav>
-        {repos.length > 1 ? <RepoSelect repos={repos} current={repo} /> : <span>{repo}</span>}
+        {repo && (
+          <>
+            <span className="crumb" aria-label="Repository">› {name || repo}</span>
+            <nav className="navbar">
+              {links.map((l) => (
+                <Link
+                  key={l.key}
+                  href={l.href}
+                  className={l.key === page ? "active" : undefined}
+                  aria-current={l.key === page ? "page" : undefined}
+                >
+                  {l.label}
+                </Link>
+              ))}
+            </nav>
+          </>
+        )}
       </header>
       {children}
     </div>

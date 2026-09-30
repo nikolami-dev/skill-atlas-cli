@@ -37,6 +37,16 @@ export async function loadSkills(repo: string): Promise<Skill[] | null> {
   return (skills as Skill[]).sort((a, b) => a.name.localeCompare(b.name));
 }
 
+// repoFromParam turns a /repos/[repo] URL segment back into an index file name. The result is only
+// ever matched against listRepos() (see loadSkills), never used as a path.
+export function repoFromParam(segment: string): string {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
+}
+
 const ref = (s: Skill) => s.commit_sha || "HEAD";
 const escapePath = (p: string) => p.split("/").map(encodeURIComponent).join("/");
 

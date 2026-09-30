@@ -36,8 +36,8 @@ PORT=3000; while lsof -ti tcp:$PORT >/dev/null; do PORT=$((PORT+1)); done   # a 
    rm -rf $D/video $D/*.gif $D/frame-*.png $D/.skill-atlas; cd $REPO && go build -o $D/skill-atlas .
    HOME=$D $D/skill-atlas scan <pinned /tree/<sha> URL from the DoD>   # must end with "Found N skills" 
    ```
-   The index is written to `$D/.skill-atlas/<owner>-<repo>.json`. The web UI's `repo=` value is
-   that file name without `.json`.
+   The index is written to `$D/.skill-atlas/<owner>-<repo>.json`. In the web UI, `/` is the
+   gallery and that repository is at `/repos/<owner>-<repo>` (the file name without `.json`).
 2. **Web UI**
    ```sh
    cd $REPO/webui && npm ci && npm run build

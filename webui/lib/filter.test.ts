@@ -25,7 +25,8 @@ test("matches in description", () => {
 test("does not match on path or category only", () => {
   assert.equal(matchesSkill(s, "mirror"), false, "non-primary path");
   assert.equal(matchesSkill(s, ".claude/skills"), false, "primary path");
-  assert.equal(matchesSkill({ ...s, paths: undefined }, "skills/bump"), false, "path when paths is missing");
+  const noPaths: Skill = { ...s, paths: undefined };
+  assert.equal(matchesSkill(noPaths, "skills/bump"), false, "path when paths is missing");
   assert.equal(matchesSkill(s, "product"), false, "category");
 });
 
