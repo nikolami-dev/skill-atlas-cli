@@ -263,6 +263,8 @@ The home page shows all indexed repositories at once, as cards, with an instant 
   Search `q=zzqx`: `No repositories match "zzqx"`.
 - Typing in the search updates the cards without a page load, and the URL becomes `/?q=…`; the
   browser Back button does not step through keystrokes.
+- Search `gradle`, open the kotlin card, then press Back: the gallery shows the search `gradle` and
+  its 1 card again (the initial search value is read from the current URL, not from props).
 - `/?repo=JetBrains-kotlin&q=gradle` redirects to `/repos/JetBrains-kotlin?q=gradle`, and
   `/similar?repo=JetBrains-kotlin` to `/repos/JetBrains-kotlin/similar`. `/repos/..%2F..%2Fetc` → 404.
 - `/repos/JetBrains-kotlin` renders the skill browser with skill content loaded from GitHub; its

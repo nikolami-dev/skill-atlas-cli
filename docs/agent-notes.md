@@ -47,6 +47,9 @@ Last updated: 2026-09-30
   covers the default-branch lookup and only asserts that at least one skill is found.
 - When checking server-rendered pages with `curl`, strip React's `<!-- -->` text separators first
   (`sed 's/<!-- -->//g'`). Otherwise `76%` shows up as `76<!-- -->%` and a grep finds nothing.
+- Next.js client state mirrored into the URL with `history.replaceState` must take its initial
+  value from `useSearchParams()`, not from a server prop: Back restores the page from the router
+  cache as first rendered, so a prop holds the old value while the URL holds the new one.
 - Don't commit editor swap files (e.g. `.page.tsx.swp` from vim) or `webui/next-env.d.ts`, which is
   generated. Add files to a commit explicitly.
 

@@ -67,9 +67,8 @@ header .title {
   text-decoration: none;
 }
 
-header select {
-  font: inherit;
-  padding: 4px 8px;
+header .crumb {
+  color: var(--muted);
 }
 
 .sidebar {
@@ -211,6 +210,87 @@ header .navbar a.active {
 
 .app > main.wide {
   grid-column: 1 / -1;
+}
+
+.gallery > * {
+  max-width: none;
+}
+
+.gallery-search {
+  display: flex;
+  gap: 8px;
+  max-width: 600px;
+}
+
+.gallery-search input {
+  flex: 1;
+  font: inherit;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.gallery-search button {
+  font: inherit;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--subtle);
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  display: block;
+  height: 100%;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--fg);
+  text-decoration: none;
+}
+
+.card:hover,
+.card:focus-visible {
+  border-color: var(--accent);
+  background: var(--subtle);
+}
+
+.card h2 {
+  margin: 0 0 8px;
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+
+.card p {
+  margin: 2px 0;
+  font-size: 13px;
+}
+
+.card .muted {
+  color: var(--muted);
+}
+
+.card .matching {
+  margin-top: 8px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.card.error {
+  border-color: var(--error);
+  color: var(--error);
 }
 
 .similar {
