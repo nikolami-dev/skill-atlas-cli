@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -23,13 +24,17 @@ const apiBase = "https://api.github.com"
 
 const usage = "usage: skill-atlas scan <github-url> [--json]"
 
+// Skill is one unique skill file. Files with identical content (same git blob SHA)
+// are merged into one Skill; Path is the first of Paths.
 type Skill struct {
-	Repo        string `json:"repo"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Path        string `json:"path"`
-	CommitSHA   string `json:"commit_sha"`
-	CommitDate  string `json:"commit_date"`
+	Repo        string   `json:"repo"`
+	Name        string   `json:"name"`
+	Description string   `json:"description"`
+	Path        string   `json:"path"`
+	Paths       []string `json:"paths"`
+	Categories  []string `json:"categories"`
+	CommitSHA   string   `json:"commit_sha"`
+	CommitDate  string   `json:"commit_date"`
 }
 
 // sem bounds the number of concurrent GitHub API requests.
@@ -94,9 +99,13 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 	if len(skills) > 0 {
 		tw := tabwriter.NewWriter(stdout, 0, 0, 2, ' ', 0)
-		fmt.Fprintln(tw, "NAME\tDESCRIPTION\tPATH\tCOMMIT")
+		fmt.Fprintln(tw, "NAME\tCATEGORY\tDESCRIPTION\tPATH\tCOMMIT")
 		for _, s := range skills {
-			fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", s.Name, truncate(s.Description, 60), s.Path, shortSHA(s.CommitSHA))
+			p := s.Path
+			if n := len(s.Paths) - 1; n > 0 {
+				p += fmt.Sprintf(" (+%d copies)", n)
+			}
+			fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", s.Name, strings.Join(s.Categories, ","), truncate(s.Description, 60), p, shortSHA(s.CommitSHA))
 		}
 		tw.Flush()
 	}
@@ -132,6 +141,27 @@ func isSkillFile(p string) bool {
 	return strings.EqualFold(base, "SKILL.md") || strings.EqualFold(base, "SKILLS.md")
 }
 
+// category classifies a skill file path as "test", "agent" or "product".
+// ponytail: name-based heuristic; add a config of extra patterns if repos need it.
+func category(p string) string {
+	dirs := strings.Split(path.Dir(p), "/")
+	// The last dir is the skill's own folder (e.g. "mps-tests"), which names the skill, not its location.
+	for _, d := range dirs[:len(dirs)-1] {
+		l := strings.ToLower(d)
+		if l == "test" || l == "tests" || l == "testdata" || l == "test-data" || l == "__tests__" ||
+			strings.HasSuffix(d, "Test") || strings.HasSuffix(d, "Tests") ||
+			strings.HasSuffix(l, "-test") || strings.HasSuffix(l, "-tests") ||
+			strings.HasSuffix(l, "_test") || strings.HasSuffix(l, "_tests") {
+			return "test"
+		}
+	}
+	top := strings.ToLower(dirs[0])
+	if top == "." || strings.HasPrefix(top, ".") || top == "agent" || top == "agents" {
+		return "agent"
+	}
+	return "product"
+}
+
 func scan(owner, repo, branch string) ([]Skill, error) {
 	if branch == "" {
 		var r struct {
@@ -142,20 +172,38 @@ func scan(owner, repo, branch string) ([]Skill, error) {
 		}
 		branch = r.DefaultBranch
 	}
-	paths, err := findSkillFiles(owner, repo, branch, "")
+	files, err := findSkillFiles(owner, repo, branch, "")
 	if err != nil {
 		return nil, err
 	}
 
-	skills := make([]Skill, len(paths))
-	errs := make([]error, len(paths))
+	// Identical content means identical blob SHA, so copies (e.g. .agents/ and .claude/)
+	// become one skill and each distinct blob is fetched only once.
+	byBlob := map[string][]string{}
+	for _, f := range files {
+		byBlob[f.SHA] = append(byBlob[f.SHA], f.Path)
+	}
+	groups := make([][]string, 0, len(byBlob))
+	for _, paths := range byBlob {
+		sort.Strings(paths)
+		groups = append(groups, paths)
+	}
+
+	results := make([]*Skill, len(groups))
+	errs := make([]error, len(groups))
 	var wg sync.WaitGroup
-	for i, p := range paths {
-		wg.Go(func() { skills[i], errs[i] = fetchSkill(owner, repo, branch, p) })
+	for i, paths := range groups {
+		wg.Go(func() { results[i], errs[i] = fetchSkill(owner, repo, branch, paths) })
 	}
 	wg.Wait()
 	if err := errors.Join(errs...); err != nil {
 		return nil, err
+	}
+	skills := []Skill{}
+	for _, s := range results {
+		if s != nil {
+			skills = append(skills, *s)
+		}
 	}
 	sort.Slice(skills, func(i, j int) bool { return skills[i].Path < skills[j].Path })
 	return skills, nil
@@ -172,20 +220,20 @@ type tree struct {
 	Truncated bool        `json:"truncated"`
 }
 
-// findSkillFiles returns the paths of all skill files under the tree ref.
+// findSkillFiles returns all skill file blobs under the tree ref, with paths relative to the repo root.
 // GitHub truncates huge recursive listings (e.g. JetBrains/kotlin), so on truncation
 // it lists one level and recurses into each subtree in parallel.
-func findSkillFiles(owner, repo, ref, prefix string) ([]string, error) {
+func findSkillFiles(owner, repo, ref, prefix string) ([]treeEntry, error) {
 	base := fmt.Sprintf("/repos/%s/%s/git/trees/%s", owner, repo, url.PathEscape(ref))
 	var t tree
 	if err := getJSON(base+"?recursive=1", &t); err != nil {
 		return nil, err
 	}
-	var found []string
+	var found []treeEntry
 	if !t.Truncated {
 		for _, e := range t.Tree {
 			if e.Type == "blob" && isSkillFile(e.Path) {
-				found = append(found, prefix+e.Path)
+				found = append(found, treeEntry{Path: prefix + e.Path, Type: e.Type, SHA: e.SHA})
 			}
 		}
 		return found, nil
@@ -199,12 +247,12 @@ func findSkillFiles(owner, repo, ref, prefix string) ([]string, error) {
 	for _, e := range level.Tree {
 		switch {
 		case e.Type == "blob" && isSkillFile(e.Path):
-			found = append(found, prefix+e.Path)
+			found = append(found, treeEntry{Path: prefix + e.Path, Type: e.Type, SHA: e.SHA})
 		case e.Type == "tree":
 			subtrees = append(subtrees, e)
 		}
 	}
-	results := make([][]string, len(subtrees))
+	results := make([][]treeEntry, len(subtrees))
 	errs := make([]error, len(subtrees))
 	var wg sync.WaitGroup
 	for i, e := range subtrees {
@@ -220,12 +268,18 @@ func findSkillFiles(owner, repo, ref, prefix string) ([]string, error) {
 	return found, nil
 }
 
-func fetchSkill(owner, repo, branch, p string) (Skill, error) {
+// fetchSkill fetches one skill whose identical copies live at paths (sorted; the first is primary).
+// It returns nil when the file has no frontmatter, i.e. isn't a skill.
+func fetchSkill(owner, repo, branch string, paths []string) (*Skill, error) {
+	p := paths[0]
 	content, err := get(fmt.Sprintf("/repos/%s/%s/contents/%s?ref=%s", owner, repo, escapePath(p), url.QueryEscape(branch)), "application/vnd.github.raw")
 	if err != nil {
-		return Skill{}, err
+		return nil, err
 	}
-	s := parseSkill(owner+"/"+repo, p, content)
+	s, ok := parseSkill(owner+"/"+repo, paths, content)
+	if !ok {
+		return nil, nil
+	}
 
 	var commits []struct {
 		SHA    string `json:"sha"`
@@ -236,18 +290,23 @@ func fetchSkill(owner, repo, branch, p string) (Skill, error) {
 		} `json:"commit"`
 	}
 	if err := getJSON(fmt.Sprintf("/repos/%s/%s/commits?path=%s&sha=%s&per_page=1", owner, repo, url.QueryEscape(p), url.QueryEscape(branch)), &commits); err != nil {
-		return Skill{}, err
+		return nil, err
 	}
 	if len(commits) > 0 {
 		s.CommitSHA, s.CommitDate = commits[0].SHA, commits[0].Commit.Committer.Date
 	}
-	return s, nil
+	return &s, nil
 }
 
-// parseSkill builds a Skill from a skill file's content, falling back to the
-// parent directory name (or the repo name for a root-level file) when the frontmatter has no name.
-func parseSkill(repo, p string, content []byte) Skill {
+// parseSkill builds a Skill from a skill file's content and the sorted paths of its identical copies.
+// ok is false when the frontmatter has neither name nor description (e.g. a docs page named skills.md).
+// A missing name falls back to the parent directory name, or the repo name for a root-level file.
+func parseSkill(repo string, paths []string, content []byte) (s Skill, ok bool) {
 	name, desc := parseFrontmatter(content)
+	if name == "" && desc == "" {
+		return Skill{}, false
+	}
+	p := paths[0]
 	if name == "" {
 		if dir := path.Dir(p); dir != "." {
 			name = path.Base(dir)
@@ -255,7 +314,14 @@ func parseSkill(repo, p string, content []byte) Skill {
 			name = path.Base(repo)
 		}
 	}
-	return Skill{Repo: repo, Name: name, Description: desc, Path: p}
+	var categories []string
+	for _, q := range paths {
+		if c := category(q); !slices.Contains(categories, c) {
+			categories = append(categories, c)
+		}
+	}
+	sort.Strings(categories)
+	return Skill{Repo: repo, Name: name, Description: desc, Path: p, Paths: paths, Categories: categories}, true
 }
 
 // parseFrontmatter returns the name and description from a leading "---" YAML block.

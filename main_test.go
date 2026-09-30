@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestParseRepoURL(t *testing.T) {
 	tests := []struct {
@@ -47,24 +50,53 @@ func TestIsSkillFile(t *testing.T) {
 func TestParseSkill(t *testing.T) {
 	tests := []struct {
 		name, path, content, wantName, wantDesc string
+		wantOK                                  bool
 	}{
 		{"folded description", ".claude/skills/x/SKILL.md",
-			"---\nname: bump\ndescription: >\n  Bumps the\n  version.\n---\n# Body\n", "bump", "Bumps the version."},
+			"---\nname: bump\ndescription: >\n  Bumps the\n  version.\n---\n# Body\n", "bump", "Bumps the version.", true},
 		{"CRLF line endings", "x/SKILL.md",
-			"---\r\nname: crlf\r\ndescription: d\r\n---\r\n", "crlf", "d"},
+			"---\r\nname: crlf\r\ndescription: d\r\n---\r\n", "crlf", "d", true},
 		{"invalid YAML falls back to lines", "x/SKILL.md",
-			"---\nname: loose\ndescription: Use when: things break\n---\n", "loose", "Use when: things break"},
-		{"no frontmatter uses dir name", ".claude/skills/my-skill/SKILL.md",
-			"# Just markdown\n", "my-skill", ""},
+			"---\nname: loose\ndescription: Use when: things break\n---\n", "loose", "Use when: things break", true},
 		{"frontmatter without name uses dir name", "skills/other/skill.md",
-			"---\ndescription: only desc\n---\n", "other", "only desc"},
+			"---\ndescription: only desc\n---\n", "other", "only desc", true},
 		{"root-level file uses repo name", "SKILL.md",
-			"no frontmatter", "kotlin", ""},
+			"---\ndescription: root\n---\n", "kotlin", "root", true},
+		{"no frontmatter is not a skill", "docs/docs/skills.md",
+			"# Skills usage\n", "", "", false},
+		{"frontmatter without name or description is not a skill", "x/SKILL.md",
+			"---\ntitle: t\n---\n", "", "", false},
 	}
 	for _, tt := range tests {
-		s := parseSkill("JetBrains/kotlin", tt.path, []byte(tt.content))
-		if s.Name != tt.wantName || s.Description != tt.wantDesc {
-			t.Errorf("%s: got name=%q desc=%q, want name=%q desc=%q", tt.name, s.Name, s.Description, tt.wantName, tt.wantDesc)
+		s, ok := parseSkill("JetBrains/kotlin", []string{tt.path}, []byte(tt.content))
+		if ok != tt.wantOK || s.Name != tt.wantName || s.Description != tt.wantDesc {
+			t.Errorf("%s: got name=%q desc=%q ok=%v, want name=%q desc=%q ok=%v", tt.name, s.Name, s.Description, ok, tt.wantName, tt.wantDesc, tt.wantOK)
+		}
+	}
+}
+
+func TestParseSkillMergesCopies(t *testing.T) {
+	paths := []string{".agents/skills/x/SKILL.md", ".claude/skills/x/SKILL.md", "plugins/res/skills/x/SKILL.md"}
+	s, ok := parseSkill("JetBrains/MPS", paths, []byte("---\nname: x\n---\n"))
+	if !ok || s.Path != paths[0] || len(s.Paths) != 3 || strings.Join(s.Categories, ",") != "agent,product" {
+		t.Errorf("got %+v", s)
+	}
+}
+
+func TestCategory(t *testing.T) {
+	for p, want := range map[string]string{
+		".claude/skills/x/SKILL.md":      "agent",
+		".agents/skills/x/SKILL.md":      "agent",
+		"agent/skills/jewel-ui/SKILL.md": "agent",
+		"SKILL.md":                       "agent",
+		"integration-tests/src/jvmTest/resources/skills/x/SKILL.md":   "test",
+		"src/test/resources/skills/x/SKILL.md":                        "test",
+		".agents/skills/mps-tests/SKILL.md":                           "agent",
+		"plugins/mcp-tools/resources/jetbrains/mps/skills/x/SKILL.md": "product",
+		"src/main/resources/skills/x/SKILL.md":                        "product",
+	} {
+		if got := category(p); got != want {
+			t.Errorf("category(%q) = %q, want %q", p, got, want)
 		}
 	}
 }
