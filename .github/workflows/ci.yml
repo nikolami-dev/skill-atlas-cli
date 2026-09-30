@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Build
+        run: go build -o skill-atlas .
+
+      - name: Unit tests
+        run: go test -v ./...
+
+      - name: E2E test (JetBrains/kotlin)
+        run: go test -tags e2e -v -run TestScanKotlin ./...
+        env:
+          # The built-in Actions token lifts the anonymous 60 req/h API limit.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
