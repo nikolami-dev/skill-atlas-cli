@@ -1,14 +1,19 @@
 # Agent instructions (whole repo)
 
-## Memory: ALWAYS keep it up to date
+## Memory: ALWAYS read it before a task, ALWAYS keep it up to date
 
 The persistent memory lives in
 `~/.claude/projects/-Users-nikola-micic-IdeaProjects-skill-atlas-cli/memory/`.
 `MEMORY.md` is the index (one line per memory), and each memory is its own file.
 
-- **At the start of a session**, read `MEMORY.md` and the memories relevant to the task. Memories
-  describe what was true when they were written, so check them against the repo (files, `git log`,
-  `gh pr list`) before relying on them.
+- **ALWAYS read memory BEFORE starting ANY task**, not just at session start:
+  - Read `MEMORY.md`, then open every memory whose description relates to the task. When unsure,
+    open it. Do this before planning, asking questions, or touching code. Another session may have
+    changed memory since you last looked, so read the files again rather than relying on an earlier
+    read.
+  - Always check `open-items.md` and the feedback memories (workflow rules such as PR-only).
+  - Memories describe what was true when they were written. Check them against the repo (files,
+    `git log`, `gh pr list`) before relying on them, and fix any memory that turns out to be stale.
 - **ALWAYS update memory as soon as something changes, in the same session, not "later":**
   - a decision or requirement changes, or the user corrects you;
   - a user preference or workflow rule is stated or confirmed;
