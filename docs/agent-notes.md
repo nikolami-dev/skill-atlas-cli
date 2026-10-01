@@ -3,7 +3,7 @@
 Shared knowledge for anyone (human or agent) working on this repo: workflows, conventions and
 pitfalls that the code and specs don't show. Read this before every task (see `AGENTS.md`).
 
-Last updated: 2026-09-30
+Last updated: 2026-10-01
 
 ## Workflow
 
@@ -40,6 +40,8 @@ Last updated: 2026-09-30
     replace that click, because it doesn't count as the PR's checks. Agents never add the label, never
     approve runs, and never update baselines locally; they explain intended visual changes in the PR;
   - if CI is red, read the logs, fix, and push to the same branch;
+  - agent reviews of a PR follow `.agents/automations/review.md` (only findings, all in one
+    PR comment);
   - if two PRs conflict, rebase the second onto `origin/main` after the first is merged, rerun the
     tests, and `git push --force-with-lease`, only ever to feature branches.
 
