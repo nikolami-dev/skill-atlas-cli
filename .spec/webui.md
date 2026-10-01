@@ -4,16 +4,17 @@
 A local Next.js web app that browses the skill indexes produced by the
 `skill-atlas` CLI (`skill-atlas scan <github-url>`, see `.spec/cli.md`).
 The home page shows every indexed repository as a card, with an instant search across
-repositories and their skills (§4.6). Opening a repository shows its skills and the content of
-each skill file.
+repositories and their skills (§4.6), and the user's starred skills (§4.7). Opening a repository
+shows its skills, starred ones first, and the content of each skill file.
 
 Lives in the `webui/` directory of this repo; all `npm` commands below run from `webui/`.
 
 ## 2. Tech constraints
 - Node.js 24. Next.js (latest, App Router, TypeScript). Pages are React Server Components; client
-  JS only where interaction requires it (the gallery search, §4.6).
+  JS only where interaction requires it (the gallery search, §4.6; starring, §4.7).
 - Markdown rendering: `react-markdown` + `remark-gfm`. Plain CSS, no UI framework.
-- Read-only. No database, no auth, no writes to disk.
+- Read-only on the server. No database, no auth, no writes to disk. The only user state is the
+  set of starred skills, kept in the browser's `localStorage` (§4.7) and never sent to the server.
 
 ## 3. Data source
 
@@ -99,10 +100,10 @@ Inside a repository (`/repos/{repo}` and `/repos/{repo}/similar`):
   **Similar** (`/repos/{repo}/similar`); the link of the current page is highlighted. The gallery
   header has no breadcrumb and no navbar. There is NO repository `<select>`: repositories are
   switched through the gallery.
-- **Sidebar**: the filter box (§4.3), then the skills of the selected repo, sorted by name, each a
-  link with the skill name and its categories. The selected skill is highlighted. Sidebar scrolls
+- **Sidebar**: the filter box (§4.3), then the skills of the selected repo, starred skills first (§4.7),
+  each group sorted by name, each a link with the skill name and its categories. The selected skill is highlighted. Sidebar scrolls
   independently.
-- **Main**: for the selected skill — name, description, primary path (link to GitHub at the
+- **Main**: for the selected skill — name with the star toggle (§4.7), description, primary path (link to GitHub at the
   commit), other copies (`paths` minus `path`), categories, short commit SHA and date, the
   "Similar skills" section (§4.4), then the rendered markdown body.
 - **Empty states**: no index files → the gallery shows a message explaining how to run
@@ -155,6 +156,8 @@ Compare the SKILL.md files of the selected repo with each other and show how sim
 - `fetchSkillContent(s)` in `lib/atlas.ts` — cached raw SKILL.md fetch pinned to `commit_sha`.
 - `listRepos()` / `loadSkills(repo)` in `lib/atlas.ts` — index listing and loading.
 - `matchesSkill(s, q)` in `lib/filter.ts` — the one matching rule for skills (§4.3), reused by §4.6.
+- `repoPath(file)` in `lib/repos.ts` — the URL of a repository's skill browser; every link to a
+  skill is `{ pathname: repoPath(file), query: { skill: path } }`.
 
 ### 4.6 Feature: repository gallery and search
 The home page shows all indexed repositories at once, as cards, with an instant search.
@@ -185,7 +188,8 @@ The home page shows all indexed repositories at once, as cards, with an instant 
 - **Instant behaviour**:
   - The server renders the page with `q` from the URL already applied (correct without JS).
   - A client component `app/RepoGallery.tsx` receives, from the server page, each repository's
-    summary plus its skills' `name` and `description` only, and re-filters on every keystroke,
+    summary plus its skills' `name`, `description` and `path` only (`path` is for the starred-skills
+    widget, §4.7; it is NOT searched), and re-filters on every keystroke,
     with no fetches and no server round trip.
   - On each change it updates the URL with `history.replaceState` (`/?q=…`, or `/` when blank),
     so the URL is shareable and survives reload, without adding a history entry per keystroke.
@@ -207,12 +211,67 @@ The home page shows all indexed repositories at once, as cards, with an instant 
   - Also update the example in `.claude/skills/recording-pr-demos/record-webui.mjs` (it uses
     `/?repo=…`), and record the PR's demo GIF with that skill.
 
+### 4.7 Feature: star a skill
+The user stars skills they care about. Starred skills come first in the repository sidebar, and the
+home page lists all of them in a separate widget.
+- **Identity**: a star is the pair (index file name, primary `path`), the same pair as
+  `/repos/{repo}?skill={path}`. Its key is the string `{file}/{path}`, unambiguous because a file name
+  never contains `/`. A re-scan that keeps a skill's `path` keeps its star.
+- **Storage**: `localStorage["skill-atlas:stars"]` holds a JSON array of keys, in the order they were
+  starred. Missing, invalid JSON, or not an array → no stars; entries that aren't strings are
+  ignored; duplicates count once. Nothing is stored on the server, in cookies or in the URL. Stars
+  are per browser.
+  - All components read stars through one client hook, `useStars()` in `app/useStars.ts`
+    (`useSyncExternalStore` over `localStorage`), so a toggle updates every component on the page at
+    once, and other tabs through the `storage` event.
+  - The server snapshot is "no stars". The server renders the page unstarred, and starred skills
+    move up after hydration. That brief reorder is accepted.
+  - If `localStorage` is unavailable (it throws), the app behaves as if there are no stars and toggling
+    does nothing. It does not crash.
+- **Star toggle** (`app/StarButton.tsx`): a `<button>` on the skill page, right after the skill name
+  (`<h1>`, which keeps only the name), with `aria-label="Star this skill"` and `aria-pressed` = starred.
+  Visible text: `☆ Star` when not starred, `★ Starred` when starred. A click toggles the star.
+- **Sidebar order** (`app/SkillList.tsx`, a client component): the server page applies the filter
+  (§4.3) as today and passes the shown skills in name order. The list renders starred skills first,
+  then the others, keeping name order inside each group (a stable partition). A starred entry shows
+  `★` before its name (`role="img"`, `aria-label="Starred"`). The links, `q` handling and the
+  highlighting of the selected skill are unchanged; the links stay direct children of `nav.sidebar`.
+- **Home-page widget** (`app/StarredSkills.tsx`, a client component, separate from `RepoGallery`):
+  a `<section className="starred">` with the heading `Starred skills`, placed above the gallery search.
+  - One entry per starred skill that exists in a readable index: the skill name as a link to
+    `/repos/{file}?skill={path}`, followed by the repository display name (`owner/repo`).
+  - Sorted by repository display name, then skill name (`localeCompare`).
+  - With no such entries, the section is not rendered at all, so the gallery looks exactly as
+    before.
+  - It does NOT react to the gallery search, and has no unstar control.
+- **Stale stars**: a key whose index file or `path` no longer exists (or whose index is invalid) is
+  not shown anywhere and is not deleted, so it comes back if the skill reappears.
+- **Unchanged**: the gallery card order and contents, the Similar page and the "Similar skills"
+  section.
+- **Code**: pure functions in `lib/stars.ts`, unit-tested in `lib/stars.test.ts`. They are client-safe:
+  only type imports from `lib/atlas.ts` and `lib/repos.ts`.
+  - `STARS_KEY = "skill-atlas:stars"`; `starKey(file: string, path: string): string`;
+  - `parseStars(raw: string | null): string[]` (the storage rules above, deduplicated, order kept);
+  - `toggleStar(stars: string[], key: string): string[]` (removes the key if present, else appends it;
+    never mutates its input);
+  - `starredFirst<T extends { path: string }>(file: string, skills: T[], stars: ReadonlySet<string>): T[]`;
+  - `starredSkills(repos: { summary: { file: string; name: string }; skills: { name: string; path: string }[] }[], stars: ReadonlySet<string>): { file: string; repoName: string; name: string; path: string }[]`.
+- **Files**:
+  - New: `lib/stars.ts`, `lib/stars.test.ts`, `app/useStars.ts`, `app/StarButton.tsx`,
+    `app/SkillList.tsx`, `app/StarredSkills.tsx`.
+  - Changed: `app/page.tsx` (the widget, plus `path` in the client data), `app/RepoGallery.tsx`
+    (the type of that data), `app/repos/[repo]/page.tsx` (the toggle and `SkillList`),
+    `app/globals.css`, and `e2e/demo.spec.ts`.
+
 ## 5. Out of scope
 - Running scans from the UI, editing skills, deployment.
-- Gallery: sorting or paging cards, favourites, fuzzy/regex search, searching paths, categories
+- Gallery: sorting or paging cards, fuzzy/regex search, searching paths, categories
   or SKILL.md content, a repository selector in the header.
 - Filter: searching paths, categories or SKILL.md content; regex/fuzzy matching, ranking by relevance. Similarity: comparing across repos,
   semantic/embedding similarity, configurable threshold.
+- Stars: syncing across browsers or devices, server-side or CLI storage, starring repositories,
+  ordering gallery cards by stars, a "starred only" filter, an unstar control in the home-page
+  widget, star order on the Similar page or in the "Similar skills" section, import/export.
 
 ## 6. Testing
 - `npm test`: unit tests (Node test runner) for index loading — repo listing, unknown/traversal
@@ -228,10 +287,20 @@ The home page shows all indexed repositories at once, as cards, with an instant 
   - `matchRepo`: match by display name, by file name, by skill name, by skill description; NOT by
     a path or category only; case-insensitive and trimmed `q`; blank `q` matches all; the
     `matchingSkills` count; `byName` true/false.
+- `lib/stars.test.ts`:
+  - `starKey`;
+  - `parseStars`: a valid array; `null`; invalid JSON; a non-array; non-string entries dropped;
+    duplicates removed with order kept;
+  - `toggleStar`: adds at the end, removes, doesn't mutate its input;
+  - `starredFirst`: starred first with name order kept in both groups; no stars → unchanged order;
+    a star of another repository with the same `path` doesn't count;
+  - `starredSkills`: sorted by repository display name, then skill name; stale keys (unknown file or
+    path) skipped; an error repository (no skills) skipped; no stars → empty.
 - **Visual / demo test** (`npm run test:visual`, CI job `visual`, required):
   `e2e/demo.spec.ts` with Playwright (`@playwright/test`, version pinned exactly).
   - It runs the DoD scenario on the committed fixtures `e2e/fixtures/` (the four pinned scans of §7):
-    gallery → search `gradle` → repository → skill page → Similar → Back.
+    gallery → search `gradle` → repository → skill page → Similar → Back → star a skill (§4.7) →
+    reload → gallery widget → unstar.
   - Each key moment asserts its state, then takes a named screenshot (`expect.soft(...).toHaveScreenshot`),
     compared with `e2e/__screenshots__/`.
   - Deterministic: fixed viewport 1280×720, scale 1, `en-US`, UTC, animations off; no sleeps before a
@@ -243,7 +312,8 @@ The home page shows all indexed repositories at once, as cards, with an instant 
     "Approve and run workflows" for the CI run GitHub holds on that bot commit.
 - Manual: `npm run dev` with at least two indexes, check the gallery (cards, instant search, the
   URL updating without history entries, Clear), a card opening its repository, the breadcrumb,
-  navbar, sidebar, filter, Similar page, content render, and the old-URL redirects;
+  navbar, sidebar, filter, Similar page, content render, the old-URL redirects, and starring
+  (toggle, sidebar order, home-page widget, persistence across reload, a second tab updating);
   `npm run build` passes.
 
 ## 7. Definition of Done
@@ -287,3 +357,19 @@ The home page shows all indexed repositories at once, as cards, with an instant 
   `analysis-api-mark-internal-apis` is NOT listed ("gradle" appears only in its body).
 - Similar: `/repos/JetBrains-kotlin/similar` shows 8 pairs ≥ 30%; the top 3 are the pairs among the
   three Gradle-bump skills (76%, 75%, 68%).
+- Stars (§4.7), starting from an empty `localStorage`:
+  - Before any star, the gallery `/` has no `Starred skills` section, and `/repos/JetBrains-kotlin`
+    lists the 6 skills in name order. The skill page's toggle reads `☆ Star` with `aria-pressed="false"`.
+  - On `/repos/JetBrains-kotlin?skill=.claude/skills/build-tools-bump-gradle-in-tests/SKILL.md`,
+    clicking the toggle shows `★ Starred` with `aria-pressed="true"`, and the sidebar becomes, in order:
+    `build-tools-bump-gradle-in-tests` (with `★`), `analysis-api-create-cherry-pick-issue`,
+    `analysis-api-mark-internal-apis`, `build-bump-gradle-version`, `build-tools-bump-gradle-api`,
+    `minimize-repro-for-diagnostic-test`. After a reload, the order and `★ Starred` are the same.
+  - With `q=gradle`, the sidebar is `build-tools-bump-gradle-in-tests`, `build-bump-gradle-version`,
+    `build-tools-bump-gradle-api` (`3 of 6 skills`).
+  - After also starring `jewel-ui` (`/repos/JetBrains-android?skill=agent/skills/jewel-ui/SKILL.md`),
+    the gallery's `Starred skills` widget lists exactly two entries, in this order:
+    `jewel-ui` · `JetBrains/android`, then `build-tools-bump-gradle-in-tests` · `JetBrains/kotlin`.
+    Each links to its skill page. The 4 cards are unchanged.
+  - Unstarring both makes the widget disappear, and the kotlin sidebar is in name order again.
+  - `localStorage["skill-atlas:stars"] = "not json"` → no stars and no error.
