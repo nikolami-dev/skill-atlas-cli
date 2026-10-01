@@ -56,7 +56,11 @@ Last updated: 2026-10-01
   the E2E step runs only for changes to Go files, `go.mod`/`go.sum` or `ci.yml` (`.spec/cli.md` §5).
   `skill-atlas: GitHub API rate limit exceeded` in CI means that hourly budget is used up, not a CLI
   bug: rerun the failed job after the hour, or check that the `E2E_GITHUB_TOKEN` secret is set and
-  not expired (CI falls back to the Actions token without it). `visual-report` uses the same token (to post its
+  not expired (CI falls back to the Actions token without it). The step `E2E token and API budget`
+  shows which token was used and the status of one real request. A PAT's budget belongs to its
+  user account, shared with every other tool and session using that account, so other usage can
+  exhaust it (403 `API rate limit exceeded for user ID …`). `GET /rate_limit` can still report a
+  full budget then, so don't trust it. `visual-report` uses the same token (to post its
   comment and push to `pr-assets`), so it fails at the same time.
 - Pin every E2E test with exact expectations to a commit (`https://github.com/<owner>/<repo>/tree/<sha>`),
   so upstream changes can't turn CI red. The only live-URL test is `TestScanDefaultBranch`, which

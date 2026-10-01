@@ -47,8 +47,8 @@ jobs:
             echo "e2e=true" >> "$GITHUB_OUTPUT"
           fi
 
-      # Shows which token the E2E tests get and how much of its hourly budget is left
-      # (GET /rate_limit itself is free).
+      # Shows which token the E2E tests get, and the status and remaining budget of one real request.
+      # (GET /rate_limit is not used: it can report a full budget while real requests are rejected.)
       - name: E2E token and API budget
         if: steps.changes.outputs.e2e == 'true'
         env:
@@ -56,9 +56,6 @@ jobs:
           SOURCE: ${{ secrets.E2E_GITHUB_TOKEN != '' && 'the E2E_GITHUB_TOKEN secret' || 'the Actions token (E2E_GITHUB_TOKEN is not set)' }}
         run: |
           echo "Token: $SOURCE"
-          curl -sS -H "Authorization: Bearer $GITHUB_TOKEN" https://api.github.com/rate_limit |
-            jq -r 'if .resources then .resources.core | "Budget: \(.remaining)/\(.limit) left, resets \(.reset | todate)" else "rate_limit: \(.message)" end' || true
-          # One real request like the scans make, to show the actual status and message if it's rejected.
           curl -sS -o /tmp/probe.json -D - -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" \
             https://api.github.com/repos/JetBrains/koog/git/trees/16d83270f8a7f25358ae0165466f14e70416c428 |
             grep -iE '^(HTTP/|x-ratelimit-(limit|remaining|resource)|retry-after|x-accepted-github-permissions)' || true
