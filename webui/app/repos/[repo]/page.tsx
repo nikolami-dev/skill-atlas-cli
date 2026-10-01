@@ -8,6 +8,8 @@ import { matchesSkill } from "@/lib/filter";
 import { repoPath } from "@/lib/repos";
 import { percent, skillSimilarities } from "@/lib/similar";
 import Shell from "../../Shell";
+import SkillList from "../../SkillList";
+import StarButton from "../../StarButton";
 
 export default async function RepoPage({ params, searchParams }: PageProps<"/repos/[repo]">) {
   const repo = repoFromParam((await params).repo);
@@ -45,22 +47,17 @@ export default async function RepoPage({ params, searchParams }: PageProps<"/rep
         </form>
         {skills.length === 0 && <p className="empty">No skills found</p>}
         {skills.length > 0 && shown.length === 0 && <p className="empty">No skills match &quot;{q}&quot;</p>}
-        {shown.map((s) => (
-          <Link
-            key={s.path}
-            href={{ pathname: base, query: q ? { skill: s.path, q } : { skill: s.path } }}
-            className={s === selected ? "active" : undefined}
-            title={s.path}
-          >
-            {s.name}
-            {s.categories?.map((c) => <span key={c} className="tag">{c}</span>)}
-          </Link>
-        ))}
+        <SkillList
+          file={repo}
+          skills={shown.map(({ name, path, categories }) => ({ name, path, categories }))}
+          q={q}
+          selected={selected?.path}
+        />
       </nav>
       <main className="content">
         {selected ? (
           <>
-            <SkillHeader s={selected} />
+            <SkillHeader repo={repo} s={selected} />
             <Suspense key={"similar " + selected.path} fallback={<p className="empty">Loading similar skills…</p>}>
               <SimilarSkills repo={repo} s={selected} skills={skills} />
             </Suspense>
@@ -76,11 +73,14 @@ export default async function RepoPage({ params, searchParams }: PageProps<"/rep
   );
 }
 
-function SkillHeader({ s }: { s: Skill }) {
+function SkillHeader({ repo, s }: { repo: string; s: Skill }) {
   const copies = s.paths?.filter((p) => p !== s.path) ?? [];
   return (
     <>
-      <h1>{s.name}</h1>
+      <div className="skill-title">
+        <h1>{s.name}</h1>
+        <StarButton file={repo} path={s.path} />
+      </div>
       {s.description && <p className="description">{s.description}</p>}
       <dl className="meta">
         <dt>Path</dt>

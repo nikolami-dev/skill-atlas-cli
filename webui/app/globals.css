@@ -7,6 +7,7 @@
   --accent: #0969da;
   --active: #ddf4ff;
   --error: #cf222e;
+  --star: #bf8700;
   color-scheme: light dark;
 }
 
@@ -20,6 +21,7 @@
     --accent: #4493f8;
     --active: #1f2d3d;
     --error: #f85149;
+    --star: #d29922;
   }
 }
 
@@ -291,6 +293,83 @@ header .navbar a.active {
 .card.error {
   border-color: var(--error);
   color: var(--error);
+}
+
+/* Stars (spec §4.7) */
+.skill-title {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.star-toggle {
+  font: inherit;
+  font-size: 13px;
+  padding: 2px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--subtle);
+  color: var(--fg);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.star-toggle.on {
+  border-color: var(--star);
+  color: var(--star);
+}
+
+.star-toggle:disabled {
+  cursor: default;
+}
+
+.sidebar .star {
+  margin-right: 4px;
+  color: var(--star);
+}
+
+.starred {
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.starred h2 {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+
+.starred h2::before {
+  content: "★ ";
+  color: var(--star);
+}
+
+.starred ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.starred .muted {
+  color: var(--muted);
+}
+
+.starred .empty {
+  margin: 0;
+  padding: 0;
+}
+
+.starred .unstar {
+  margin-left: 4px;
+  font: inherit;
+  font-size: 12px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--subtle);
+  color: var(--fg);
+  cursor: pointer;
 }
 
 .similar {

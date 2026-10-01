@@ -3,6 +3,7 @@ import { atlasDir, listRepos, loadSkills } from "@/lib/atlas";
 import { repoPath, summarizeRepo } from "@/lib/repos";
 import RepoGallery, { type GalleryRepo } from "./RepoGallery";
 import Shell from "./Shell";
+import StarredSkills from "./StarredSkills";
 
 // The home page: every indexed repository as a card, with an instant search (spec §4.6).
 export default async function GalleryPage({ searchParams }: PageProps<"/">) {
@@ -33,8 +34,8 @@ export default async function GalleryPage({ searchParams }: PageProps<"/">) {
     files.map(async (file) => {
       try {
         const skills = (await loadSkills(file)) ?? [];
-        // Only what the search needs goes to the client.
-        return { summary: summarizeRepo(file, skills), skills: skills.map(({ name, description }) => ({ name, description })) };
+        // Only what the search and the starred-skills widget need goes to the client.
+        return { summary: summarizeRepo(file, skills), skills: skills.map(({ name, description, path }) => ({ name, description, path })) };
       } catch {
         return { summary: summarizeRepo(file, []), skills: [], error: true };
       }
@@ -44,6 +45,7 @@ export default async function GalleryPage({ searchParams }: PageProps<"/">) {
   return (
     <Shell>
       <main className="content wide gallery">
+        <StarredSkills repos={repos} />
         <RepoGallery repos={repos} />
       </main>
     </Shell>

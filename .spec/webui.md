@@ -238,12 +238,19 @@ home page lists all of them in a separate widget.
   highlighting of the selected skill are unchanged; the links stay direct children of `nav.sidebar`.
 - **Home-page widget** (`app/StarredSkills.tsx`, a client component, separate from `RepoGallery`):
   a `<section className="starred">` with the heading `Starred skills`, placed above the gallery search.
+  It is always rendered on the gallery (not on the "no index files" empty page).
   - One entry per starred skill that exists in a readable index: the skill name as a link to
-    `/repos/{file}?skill={path}`, followed by the repository display name (`owner/repo`).
+    `/repos/{file}?skill={path}`, followed by the repository display name (`owner/repo`), followed by
+    an unstar `<button>` with the visible text `Unstar` and `aria-label="Unstar {name} ({owner/repo})"`.
   - Sorted by repository display name, then skill name (`localeCompare`).
-  - With no such entries, the section is not rendered at all, so the gallery looks exactly as
-    before.
-  - It does NOT react to the gallery search, and has no unstar control.
+  - **Unstar**: a click removes that star (the same toggle as the skill page, through `useStars()`),
+    without navigating. The entry disappears at once, and the sidebar and skill-page toggle reflect
+    it (also in other tabs).
+  - **Empty state**: with no such entries (nothing starred, or only stale stars), the section shows
+    `<p className="empty">No starred skills</p>` under the heading.
+  - **Before hydration** the server can't see `localStorage`, so the section renders the heading
+    only, with no list and no empty-state text. After hydration it shows the list or `No starred skills`.
+  - It does NOT react to the gallery search.
 - **Stale stars**: a key whose index file or `path` no longer exists (or whose index is invalid) is
   not shown anywhere and is not deleted, so it comes back if the skill reappears.
 - **Unchanged**: the gallery card order and contents, the Similar page and the "Similar skills"
@@ -270,8 +277,8 @@ home page lists all of them in a separate widget.
 - Filter: searching paths, categories or SKILL.md content; regex/fuzzy matching, ranking by relevance. Similarity: comparing across repos,
   semantic/embedding similarity, configurable threshold.
 - Stars: syncing across browsers or devices, server-side or CLI storage, starring repositories,
-  ordering gallery cards by stars, a "starred only" filter, an unstar control in the home-page
-  widget, star order on the Similar page or in the "Similar skills" section, import/export.
+  ordering gallery cards by stars, a "starred only" filter, star order on the Similar page or in
+  the "Similar skills" section, import/export, undo after unstarring from the widget.
 
 ## 6. Testing
 - `npm test`: unit tests (Node test runner) for index loading — repo listing, unknown/traversal
@@ -300,7 +307,7 @@ home page lists all of them in a separate widget.
   `e2e/demo.spec.ts` with Playwright (`@playwright/test`, version pinned exactly).
   - It runs the DoD scenario on the committed fixtures `e2e/fixtures/` (the four pinned scans of §7):
     gallery → search `gradle` → repository → skill page → Similar → Back → star a skill (§4.7) →
-    reload → gallery widget → unstar.
+    reload → gallery widget → unstar from the widget (→ `No starred skills`).
   - Each key moment asserts its state, then takes a named screenshot (`expect.soft(...).toHaveScreenshot`),
     compared with `e2e/__screenshots__/`.
   - Deterministic: fixed viewport 1280×720, scale 1, `en-US`, UTC, animations off; no sleeps before a
@@ -313,7 +320,8 @@ home page lists all of them in a separate widget.
 - Manual: `npm run dev` with at least two indexes, check the gallery (cards, instant search, the
   URL updating without history entries, Clear), a card opening its repository, the breadcrumb,
   navbar, sidebar, filter, Similar page, content render, the old-URL redirects, and starring
-  (toggle, sidebar order, home-page widget, persistence across reload, a second tab updating);
+  (toggle, sidebar order, home-page widget with its empty state and unstar buttons, persistence
+  across reload, a second tab updating);
   `npm run build` passes.
 
 ## 7. Definition of Done
@@ -358,8 +366,9 @@ home page lists all of them in a separate widget.
 - Similar: `/repos/JetBrains-kotlin/similar` shows 8 pairs ≥ 30%; the top 3 are the pairs among the
   three Gradle-bump skills (76%, 75%, 68%).
 - Stars (§4.7), starting from an empty `localStorage`:
-  - Before any star, the gallery `/` has no `Starred skills` section, and `/repos/JetBrains-kotlin`
-    lists the 6 skills in name order. The skill page's toggle reads `☆ Star` with `aria-pressed="false"`.
+  - Before any star, the gallery `/` shows the `Starred skills` section with only `No starred skills`
+    (no list) above the search and the 4 cards, and `/repos/JetBrains-kotlin` lists the 6 skills in
+    name order. The skill page's toggle reads `☆ Star` with `aria-pressed="false"`.
   - On `/repos/JetBrains-kotlin?skill=.claude/skills/build-tools-bump-gradle-in-tests/SKILL.md`,
     clicking the toggle shows `★ Starred` with `aria-pressed="true"`, and the sidebar becomes, in order:
     `build-tools-bump-gradle-in-tests` (with `★`), `analysis-api-create-cherry-pick-issue`,
@@ -370,6 +379,9 @@ home page lists all of them in a separate widget.
   - After also starring `jewel-ui` (`/repos/JetBrains-android?skill=agent/skills/jewel-ui/SKILL.md`),
     the gallery's `Starred skills` widget lists exactly two entries, in this order:
     `jewel-ui` · `JetBrains/android`, then `build-tools-bump-gradle-in-tests` · `JetBrains/kotlin`.
-    Each links to its skill page. The 4 cards are unchanged.
-  - Unstarring both makes the widget disappear, and the kotlin sidebar is in name order again.
+    Each links to its skill page and has an `Unstar` button. The 4 cards are unchanged.
+  - In the widget, `Unstar jewel-ui (JetBrains/android)` leaves only the kotlin entry, with the URL
+    still `/`. Then `Unstar build-tools-bump-gradle-in-tests (JetBrains/kotlin)` leaves the section
+    showing `No starred skills`. The kotlin skill page's toggle then reads `☆ Star`, and its sidebar
+    is in name order again.
   - `localStorage["skill-atlas:stars"] = "not json"` → no stars and no error.
