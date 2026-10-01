@@ -4,7 +4,8 @@
 A local Next.js web app that browses the skill indexes produced by the
 `skill-atlas` CLI (`skill-atlas scan <github-url>`, see `.spec/cli.md`).
 The home page shows every indexed repository as a card, with an instant search across
-repositories and their skills (§4.6), and the user's starred skills (§4.7). Opening a repository
+repositories and their skills (§4.6), the user's starred skills (§4.7), and one widget per scanned
+organization (§4.8). Opening a repository
 shows its skills, starred ones first, and the content of each skill file.
 
 Lives in the `webui/` directory of this repo; all `npm` commands below run from `webui/`.
@@ -48,6 +49,18 @@ Lives in the `webui/` directory of this repo; all `npm` commands below run from 
   shown from the index instead).
 - Fetch failure (network, 404) → the main panel shows an error message with a link to the file on GitHub.
 
+### 3.3 Organization summaries
+- Directory: `$SKILL_ATLAS_DIR/orgs/`. Each `{owner}.json` is the summary of one owner scan, written
+  by `skill-atlas scan https://github.com/{owner}` (`.spec/cli.md` §3.2):
+  `{ "owner": string, "scanned_at": string (RFC 3339), "repos_scanned": number, "repos": [{ "repo": string, "file": string, "skills": number }] }`,
+  with `repos` already sorted (most skills first).
+- Valid means: a JSON object whose `owner` and `scanned_at` are strings, `repos_scanned` is a number,
+  and `repos` is an array of objects with string `repo` and `file` and a number `skills`. Anything
+  else (unreadable, invalid JSON, wrong shape) is **invalid**, shown as an error (§4.8), and never
+  crashes the page.
+- Read on every request, like the index files. A missing `orgs/` directory means no summaries.
+  `listRepos()` is unaffected: it lists only `*.json` files directly in `$SKILL_ATLAS_DIR`.
+
 ## 4. UI
 
 ### 4.1 Routing
@@ -70,6 +83,9 @@ Gallery (`/`):
 +-------------------------------------------------------------+
 | Skill Atlas                                                  |  header
 +-------------------------------------------------------------+
+| JetBrains organization            (one widget per summary)   |
+| 4 of 683 repositories have skills · 57 skills · scanned 2026-.. |
+|  JetBrains/MPS 41 skills   JetBrains/android 6 skills  ...   |
 | [ Search repositories and skills…            ]  [Clear]      |
 | N of M repositories            (only while searching)        |
 | +-----------------+ +-----------------+ +-----------------+  |
@@ -270,6 +286,52 @@ home page lists all of them in a separate widget.
     (the type of that data), `app/repos/[repo]/page.tsx` (the toggle and `SkillList`),
     `app/globals.css`, and `e2e/demo.spec.ts`.
 
+### 4.8 Feature: organization widget
+The home page shows the result of each owner scan (`.spec/cli.md` §3.2): which repositories of the
+organization contain skills, and how many each. A row opens the existing repository view.
+- **Placement**: one widget per valid or invalid summary file (§3.3), in file-name order
+  (`localeCompare`). They go after the `Starred skills` section (§4.7) and before the gallery search.
+  They are part of the gallery page (`/`) only.
+- **Widget**: a `<section className="org">` with:
+  - the heading `<h2>{owner} organization</h2>`;
+  - a line `M of K repositories have skills · N skills · scanned YYYY-MM-DD`, where M = number of
+    `repos`, K = `repos_scanned`, N = sum of `repos[].skills`, and the date is the UTC date of
+    `scanned_at` (`· scanned …` omitted if `scanned_at` doesn't parse). Counts use the plural rule of
+    §4.6 (`1 repository`, `1 skill`);
+  - a list (`<ul>`, a responsive grid `repeat(auto-fill, minmax(220px, 1fr))`) with one row per entry
+    of `repos`, in file order: the repository name `repo` and `N skills` (`1 skill`);
+  - a row is a link to `repoPath(file)` (§4.5), i.e. `/repos/{owner}-{repo}`, ONLY when `file` is one
+    of `listRepos()`. Otherwise the row is plain text (no link to a 404), e.g. when the index file was
+    deleted after the scan. The link is matched against `listRepos()`, never used as a path;
+  - with an empty `repos`, the line and no list.
+- **Invalid summary**: the section shows only `Cannot read orgs/{file}.json` (class `error`), with
+  `{file}` the file name without `.json`. The rest of the page renders normally.
+- **Counts are a snapshot of the owner scan**: the widget uses the summary's `skills`, not the index
+  files. After a later single-repository scan, the card shows the new count and the widget the old one
+  until the owner is scanned again. Accepted.
+- **Not searched**: the gallery search (§4.6) does not filter or change the widgets.
+- **Server-rendered**, no client JS: `app/OrgWidget.tsx` is a server component. The gallery page
+  renders it with the summaries and `listRepos()`.
+- **Empty state**: with no index files at all, the gallery shows its empty-state message (§4.2) as
+  before, without widgets.
+- **Code**:
+  - `lib/orgs.ts`, pure and unit-tested in `lib/orgs.test.ts`. It has the type `OrgSummary` (§3.3),
+    `parseOrgSummary(text: string): OrgSummary | null` (null = invalid, §3.3), and
+    `orgRows(org: OrgSummary, files: string[]): { repo: string; skills: number; href: string | null }[]`.
+  - `loadOrgs(): Promise<{ file: string; org: OrgSummary | null }[]>` in `lib/atlas.ts` reads
+    `orgs/*.json` (sorted by file name; missing directory → `[]`; unreadable or invalid → `org: null`).
+- **Files**:
+  - New: `lib/orgs.ts`, `lib/orgs.test.ts`, `app/OrgWidget.tsx`, `e2e/fixtures/orgs/JetBrains.json`.
+  - Changed: `lib/atlas.ts` (`loadOrgs`), `lib/atlas.test.ts`, `app/page.tsx` (renders the widgets),
+    `app/globals.css` (a new `.org` block after the `.card` rules, not at the end of the file), and
+    `e2e/demo.spec.ts`.
+- **Fixture** `e2e/fixtures/orgs/JetBrains.json`: the summary as if the owner scan had found exactly
+  the four pinned fixture scans (§7): `"owner": "JetBrains"`, `"scanned_at": "2026-10-01T09:30:00Z"`,
+  `"repos_scanned": 683` (JetBrains' non-fork public repositories on 2026-10-01), and `repos`
+  `JetBrains/MPS` 41, `JetBrains/android` 6, `JetBrains/kotlin` 6, `JetBrains/koog` 4, with `file`
+  `JetBrains-MPS` etc. It adds the widget to every gallery screenshot of the visual test, so those
+  baselines change; the reviewer approves them (§6).
+
 ## 5. Out of scope
 - Running scans from the UI, editing skills, deployment.
 - Gallery: sorting or paging cards, fuzzy/regex search, searching paths, categories
@@ -279,6 +341,9 @@ home page lists all of them in a separate widget.
 - Stars: syncing across browsers or devices, server-side or CLI storage, starring repositories,
   ordering gallery cards by stars, a "starred only" filter, star order on the Similar page or in
   the "Similar skills" section, import/export, undo after unstarring from the widget.
+- Organization widget: running an owner scan from the UI, filtering or sorting the widget, searching
+  it, collapsing it, counts from the index files instead of the summary, a page per organization,
+  grouping the gallery cards by organization.
 
 ## 6. Testing
 - `npm test`: unit tests (Node test runner) for index loading — repo listing, unknown/traversal
@@ -307,7 +372,8 @@ home page lists all of them in a separate widget.
   `e2e/demo.spec.ts` with Playwright (`@playwright/test`, version pinned exactly).
   - It runs the DoD scenario on the committed fixtures `e2e/fixtures/` (the four pinned scans of §7):
     gallery → search `gradle` → repository → skill page → Similar → Back → star a skill (§4.7) →
-    reload → gallery widget → unstar from the widget (→ `No starred skills`).
+    reload → gallery widget → unstar from the widget (→ `No starred skills`) → organization widget
+    row → repository (§4.8).
   - Each key moment asserts its state, then takes a named screenshot (`expect.soft(...).toHaveScreenshot`),
     compared with `e2e/__screenshots__/`.
   - Deterministic: fixed viewport 1280×720, scale 1, `en-US`, UTC, animations off; no sleeps before a
@@ -317,6 +383,14 @@ home page lists all of them in a separate widget.
   - Differences are shown as expected / actual / diff in a sticky PR comment. The reviewer accepts
     them with the label `approve-screenshots` (CI regenerates and commits the baselines), then clicks
     "Approve and run workflows" for the CI run GitHub holds on that bot commit.
+- `lib/orgs.test.ts`:
+  - `parseOrgSummary`: a valid summary; invalid JSON; not an object; a missing or wrongly typed
+    `owner`, `scanned_at`, `repos_scanned` or `repos`; a `repos` entry with a missing or wrongly
+    typed field;
+  - `orgRows`: file order kept; `href` = `repoPath(file)` (URL-encoded) when `file` is in `files`,
+    `null` when not.
+- `lib/atlas.test.ts`: `loadOrgs` — summaries sorted by file name, an invalid one as `org: null`,
+  non-`.json` files ignored, a missing `orgs/` directory → `[]`, and `listRepos()` not listing `orgs`.
 - Manual: `npm run dev` with at least two indexes, check the gallery (cards, instant search, the
   URL updating without history entries, Clear), a card opening its repository, the breadcrumb,
   navbar, sidebar, filter, Similar page, content render, the old-URL redirects, and starring
@@ -385,3 +459,16 @@ home page lists all of them in a separate widget.
     showing `No starred skills`. The kotlin skill page's toggle then reads `☆ Star`, and its sidebar
     is in name order again.
   - `localStorage["skill-atlas:stars"] = "not json"` → no stars and no error.
+- Organization widget (§4.8), with the fixture `orgs/JetBrains.json` in the DoD data directory:
+  - The gallery `/` shows one section `JetBrains organization`, above the gallery search, with the
+    line `4 of 683 repositories have skills · 57 skills · scanned 2026-10-01` and exactly 4 rows, in
+    this order: `JetBrains/MPS` `41 skills`, `JetBrains/android` `6 skills`, `JetBrains/kotlin`
+    `6 skills`, `JetBrains/koog` `4 skills`. The 4 cards are unchanged.
+  - Clicking the `JetBrains/kotlin` row opens `/repos/JetBrains-kotlin`, showing its 6 skills.
+  - Searching `gradle` leaves the widget as it is (still 4 rows) while the cards show `1 of 4 repositories`.
+  - With `orgs/JetBrains.json` replaced by `{"owner": 1}`, the section shows
+    `Cannot read orgs/JetBrains.json` and the 4 cards still render. Without the `orgs/` directory, no
+    section is shown and the page is as before.
+  - After deleting `JetBrains-koog.json` from the data directory, the koog row is plain text, not a link.
+  - With a real `skill-atlas scan https://github.com/JetBrains` summary, every row whose index exists
+    opens that repository.
