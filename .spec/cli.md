@@ -92,10 +92,38 @@ non-empty `name`, `path`, `paths`, `categories`, `commit_sha`, `commit_date`.
 All are pinned to a commit via `/tree/<sha>` so upstream changes can't break them, except the
 "Default branch" case, which uses a plain URL and only a loose assertion.
 
+**Recorded API responses.** The pinned cases MUST NOT call the GitHub API by default. They run the
+real CLI code (`run`, in-process) against recorded responses, so they need no token and can't hit a
+rate limit. A live run of the old suite made 605 requests (measured 2026-10-01), against the
+Actions token's 1,000 an hour per repository.
+- Recordings: `testdata/e2e/{owner}-{repo}.json.gz`, one per pinned repo (both MPS cases share
+  one). Each is a gzipped JSON object mapping a request's path and query
+  (`/repos/…/git/trees/…?recursive=1`) to `{ "status", "body" }`.
+- Replay (`e2e_recording_test.go`, `useRecording(t, name)`): the test swaps
+  `http.DefaultClient.Transport`, so production code is unchanged. A request that isn't recorded
+  fails the scan with `no recorded response for GET … ; re-record with E2E_RECORD=1`; nothing falls
+  through to the network.
+- `E2E_RECORD=1` runs the pinned cases against the live API (with `GITHUB_TOKEN`; 501 requests)
+  and rewrites each recording when its test passes. Re-record when the CLI's requests change or a
+  case is added. Recording twice gives the same bytes (sorted keys, no gzip timestamp).
+- Recordings are minimized on write; the full tree listings are ~140 MB of JSON, ~18 MB gzipped.
+  - Tree listings keep only entries whose file name contains `skill` (any case), so every skill-file
+    candidate and near miss stays (e.g. koog's `docs/docs/skills.md`). Level listings (the
+    truncation fallback) also keep the subtrees that lead to such a file; listings of other subtrees
+    are dropped. Entries keep only `path`, `type`, `sha`; `truncated` is kept, so the Kotlin case
+    still walks the truncation fallback.
+  - Commit lists keep only `sha` and `commit.committer.date`. File contents are kept unchanged.
+  - Result: 172 KB for all four repos. The replayed `--json` output of every pinned case is
+    byte-identical to a live scan (checked when recording).
+- The "Default branch" case is the only live test (besides any owner-scan test, which can't be
+  pinned). It uses the small `JetBrains/koog` (11 requests), so a whole E2E run makes 11 API
+  requests (measured 2026-10-01), and with the Actions token CI can run
+  about 90 times an hour.
+
 | Case | URL | Expect |
 |------|-----|--------|
 | Basic | `https://github.com/JetBrains/kotlin/tree/197871e7256b81028d7dbce42eaee642a36900d0` | Exactly 6 skills, all under `.claude/skills/`. `~/.skill-atlas/JetBrains-kotlin.json` exists and matches stdout. |
-| Default branch | `https://github.com/JetBrains/kotlin` (no `/tree/`, so the default branch is looked up) | At least 1 skill found. Unpinned, so no exact count. |
+| Default branch | `https://github.com/JetBrains/koog` (no `/tree/`, so the default branch is looked up; live API) | At least 1 skill found. Unpinned, so no exact count. |
 | Duplicates in `.claude` and `.agents` | `https://github.com/JetBrains/MPS/tree/49d37b63488a0a8e42eb0130cb867fd508f398ac` | Exactly 41 skills, no name listed twice; each has both `.agents/skills/<dir>/SKILL.md` and `.claude/skills/<dir>/SKILL.md` in `paths`. |
 | Part of the product | same MPS commit | Exactly 32 skills have a path under `plugins/mcp-tools/resources/jetbrains/mps/agents/mcp/skills/`; exactly those have `product` in `categories`. |
 | Test data | `https://github.com/JetBrains/koog/tree/16d83270f8a7f25358ae0165466f14e70416c428` | Exactly 4 skills: 2 under `.claude/skills/` with `[agent]`, 2 under `integration-tests/src/jvmTest/resources/skills/` with `[test]`. `docs/docs/skills.md` (no frontmatter) is not listed. |

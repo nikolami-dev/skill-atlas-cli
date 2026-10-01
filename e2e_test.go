@@ -16,6 +16,8 @@ import (
 //
 // All tests are pinned to a commit so upstream changes can't break them, except
 // TestScanDefaultBranch, which checks the plain-URL (default branch) path with a loose assertion.
+// The pinned tests replay recorded API responses (see e2e_recording_test.go); E2E_RECORD=1
+// re-records them from the live API.
 const (
 	kotlinURL  = "https://github.com/JetBrains/kotlin/tree/197871e7256b81028d7dbce42eaee642a36900d0"
 	mpsURL     = "https://github.com/JetBrains/MPS/tree/49d37b63488a0a8e42eb0130cb867fd508f398ac"
@@ -45,6 +47,7 @@ func scanJSON(t *testing.T, url string) ([]Skill, []byte, string) {
 }
 
 func TestScanKotlin(t *testing.T) {
+	useRecording(t, "JetBrains-kotlin")
 	skills, stdout, home := scanJSON(t, kotlinURL)
 	if len(skills) != 6 {
 		t.Fatalf("got %d skills, want 6: %+v", len(skills), skills)
@@ -65,16 +68,18 @@ func TestScanKotlin(t *testing.T) {
 }
 
 // A URL without /tree/<ref> makes the CLI look up the repo's default branch. Unpinned, so it only
-// asserts that some skill is found, which survives upstream skills being added or removed.
+// asserts that some skill is found, which survives upstream skills being added or removed. The only
+// test against the live API; koog is small (11 requests).
 func TestScanDefaultBranch(t *testing.T) {
-	skills, _, _ := scanJSON(t, "https://github.com/JetBrains/kotlin")
+	skills, _, _ := scanJSON(t, "https://github.com/JetBrains/koog")
 	if len(skills) == 0 {
-		t.Fatal("found no skills on the default branch of JetBrains/kotlin")
+		t.Fatal("found no skills on the default branch of JetBrains/koog")
 	}
 }
 
 // MPS keeps identical copies of every skill in .agents/skills and .claude/skills.
 func TestScanMPSDuplicates(t *testing.T) {
+	useRecording(t, "JetBrains-MPS")
 	skills, _, _ := scanJSON(t, mpsURL)
 	if len(skills) != 41 {
 		t.Fatalf("got %d skills, want 41", len(skills))
@@ -95,6 +100,7 @@ func TestScanMPSDuplicates(t *testing.T) {
 
 // MPS also ships 32 of its skills inside the product (plugin resources).
 func TestScanMPSProduct(t *testing.T) {
+	useRecording(t, "JetBrains-MPS")
 	skills, _, _ := scanJSON(t, mpsURL)
 	var product int
 	for _, s := range skills {
@@ -115,6 +121,7 @@ func TestScanMPSProduct(t *testing.T) {
 
 // koog has 2 agent skills, 2 test fixtures, and a docs page named skills.md that isn't a skill.
 func TestScanKoogTestData(t *testing.T) {
+	useRecording(t, "JetBrains-koog")
 	skills, _, _ := scanJSON(t, koogURL)
 	got := map[string][]string{}
 	for _, s := range skills {
@@ -138,6 +145,7 @@ func TestScanKoogTestData(t *testing.T) {
 
 // android keeps its skills in a non-dot top-level agent/ folder.
 func TestScanAndroidUnusualFolder(t *testing.T) {
+	useRecording(t, "JetBrains-android")
 	skills, _, _ := scanJSON(t, androidURL)
 	if len(skills) != 6 {
 		t.Fatalf("got %d skills, want 6", len(skills))
