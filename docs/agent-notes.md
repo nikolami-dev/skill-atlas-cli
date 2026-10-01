@@ -50,8 +50,12 @@ Last updated: 2026-10-01
 - Go CLI at the repo root (run `go` commands there); Next.js 16 web UI in `webui/` (run `npm`
   commands there). CI (`.github/workflows/ci.yml`) has two jobs, `cli` and `webui`, and `main`
   requires both. The `webui` job uses Node 24.
-- The Go E2E tests (`go test -tags e2e ./...`) call the GitHub API. Run them with
-  `GITHUB_TOKEN=$(gh auth token)`, or they hit the anonymous limit of 60 requests an hour.
+- The Go E2E tests (`go test -tags e2e ./...`) call the GitHub API, about 600 requests per run. Run
+  them with `GITHUB_TOKEN=$(gh auth token)`, or they hit the anonymous limit of 60 requests an hour.
+  In CI the Actions token allows only 1,000 requests an hour per repository, shared by all runs, so
+  the E2E step runs only for changes to Go files, `go.mod`/`go.sum` or `ci.yml` (`.spec/cli.md` §5).
+  `skill-atlas: GitHub API rate limit exceeded` in CI means that hourly budget is used up, not a CLI
+  bug: rerun the failed job after the hour.
 - Pin every E2E test with exact expectations to a commit (`https://github.com/<owner>/<repo>/tree/<sha>`),
   so upstream changes can't turn CI red. The only live-URL test is `TestScanDefaultBranch`, which
   covers the default-branch lookup and only asserts that at least one skill is found.

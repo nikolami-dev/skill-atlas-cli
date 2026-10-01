@@ -92,6 +92,14 @@ non-empty `name`, `path`, `paths`, `categories`, `commit_sha`, `commit_date`.
 All are pinned to a commit via `/tree/<sha>` so upstream changes can't break them, except the
 "Default branch" case, which uses a plain URL and only a loose assertion.
 
+In CI (job `cli`), the E2E step runs only when the change touches `*.go`, `go.mod`, `go.sum` or
+`.github/workflows/ci.yml`, compared with the PR's base branch (or, on a push to `main`, with the
+previous `main` commit). If that comparison fails, the step runs. Vet, build and unit tests always
+run, so the required `cli` check always reports. Reason: one E2E run makes ~600 GitHub API
+requests (measured 2026-10-01: Kotlin 103, default branch 104, each MPS case 108, Koog 10,
+Android 172), and the Actions `GITHUB_TOKEN` allows 1,000 requests an hour per repository, shared
+by all runs. Locally, run them with `GITHUB_TOKEN=$(gh auth token)`.
+
 | Case | URL | Expect |
 |------|-----|--------|
 | Basic | `https://github.com/JetBrains/kotlin/tree/197871e7256b81028d7dbce42eaee642a36900d0` | Exactly 6 skills, all under `.claude/skills/`. `~/.skill-atlas/JetBrains-kotlin.json` exists and matches stdout. |

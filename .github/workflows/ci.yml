@@ -15,6 +15,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # the E2E step compares with the base commit
 
       - uses: actions/setup-go@v6
         with:
@@ -29,7 +31,24 @@ jobs:
       - name: Unit tests
         run: go test -v ./...
 
+      # One E2E run makes ~600 GitHub API requests, and the Actions token allows 1,000 an hour per
+      # repository, shared by all runs. So the E2E tests run only when the CLI or this workflow
+      # changed (spec cli.md §5); vet, build and unit tests always run.
+      - name: Did the CLI change?
+        id: changes
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || github.event.before }}
+        run: |
+          if files=$(git diff --name-only "$BASE...HEAD" -- '*.go' go.mod go.sum .github/workflows/ci.yml); then
+            echo "$files"
+            if [ -n "$files" ]; then echo "e2e=true" >> "$GITHUB_OUTPUT"; else echo "e2e=false" >> "$GITHUB_OUTPUT"; fi
+          else
+            echo "Cannot compare with $BASE; running the E2E tests."
+            echo "e2e=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: E2E tests (JetBrains repos)
+        if: steps.changes.outputs.e2e == 'true'
         run: go test -tags e2e -v ./...
         env:
           # The built-in Actions token lifts the anonymous 60 req/h API limit.
