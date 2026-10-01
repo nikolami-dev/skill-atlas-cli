@@ -51,8 +51,9 @@ jobs:
         if: steps.changes.outputs.e2e == 'true'
         run: go test -tags e2e -v ./...
         env:
-          # The built-in Actions token lifts the anonymous 60 req/h API limit.
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # E2E_GITHUB_TOKEN (a read-only fine-grained PAT, see spec cli.md §5) has its own hourly budget.
+          # Without it, the built-in Actions token is used: 1,000 requests an hour per repository.
+          GITHUB_TOKEN: ${{ secrets.E2E_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
 
   webui:
     runs-on: ubuntu-latest

@@ -100,6 +100,13 @@ requests (measured 2026-10-01: Kotlin 103, default branch 104, each MPS case 108
 Android 172), and the Actions `GITHUB_TOKEN` allows 1,000 requests an hour per repository, shared
 by all runs. Locally, run them with `GITHUB_TOKEN=$(gh auth token)`.
 
+The E2E step uses the repository secret `E2E_GITHUB_TOKEN` when it is set, and the Actions token
+otherwise. That secret is a fine-grained personal access token with **Repository access: Public
+repositories** and **no permissions** (read-only access to public repos is all the scans need). Its
+budget is the owner's personal one (5,000 requests an hour; 15,000 for GitHub Enterprise Cloud
+users), shared with the owner's other tools. It expires, and must then be regenerated and the secret
+updated.
+
 | Case | URL | Expect |
 |------|-----|--------|
 | Basic | `https://github.com/JetBrains/kotlin/tree/197871e7256b81028d7dbce42eaee642a36900d0` | Exactly 6 skills, all under `.claude/skills/`. `~/.skill-atlas/JetBrains-kotlin.json` exists and matches stdout. |

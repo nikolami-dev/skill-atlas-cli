@@ -55,7 +55,8 @@ Last updated: 2026-10-01
   In CI the Actions token allows only 1,000 requests an hour per repository, shared by all runs, so
   the E2E step runs only for changes to Go files, `go.mod`/`go.sum` or `ci.yml` (`.spec/cli.md` §5).
   `skill-atlas: GitHub API rate limit exceeded` in CI means that hourly budget is used up, not a CLI
-  bug: rerun the failed job after the hour. `visual-report` uses the same token (to post its
+  bug: rerun the failed job after the hour, or check that the `E2E_GITHUB_TOKEN` secret is set and
+  not expired (CI falls back to the Actions token without it). `visual-report` uses the same token (to post its
   comment and push to `pr-assets`), so it fails at the same time.
 - Pin every E2E test with exact expectations to a commit (`https://github.com/<owner>/<repo>/tree/<sha>`),
   so upstream changes can't turn CI red. The only live-URL test is `TestScanDefaultBranch`, which
