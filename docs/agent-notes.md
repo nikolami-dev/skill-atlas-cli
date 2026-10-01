@@ -66,6 +66,11 @@ Last updated: 2026-10-01
 - Next.js client state mirrored into the URL with `history.replaceState` must take its initial
   value from `useSearchParams()`, not from a server prop: Back restores the page from the router
   cache as first rendered, so a prop holds the old value while the URL holds the new one.
+- Browser-only state (e.g. the starred skills in `localStorage`, `.spec/webui.md` §4.7) goes through
+  one `useSyncExternalStore` hook whose server snapshot is the empty state, so hydration never
+  mismatches. Controls that write that state stay `disabled` until hydrated (a second
+  `useSyncExternalStore` with server value `false`). Otherwise a click before hydration is lost, and
+  Playwright clicks as soon as the button is visible.
 - Don't commit editor swap files (e.g. `.page.tsx.swp` from vim) or `webui/next-env.d.ts`, which is
   generated. Add files to a commit explicitly.
 

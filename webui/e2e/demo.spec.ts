@@ -10,7 +10,7 @@ import { expect, test, type Page } from "@playwright/test";
 // toHaveScreenshot already waits for a stable page, and a sleep would hide a missing wait.
 const pause = (page: Page, ms = 700) => page.waitForTimeout(ms);
 
-test("repository gallery, search, skills and similar skills", async ({ page }) => {
+test("repository gallery, search, skills, similar skills and stars", async ({ page }) => {
   const cards = page.locator("a.card");
   const search = page.getByRole("searchbox", { name: "Search repositories and skills" });
 
@@ -72,5 +72,62 @@ test("repository gallery, search, skills and similar skills", async ({ page }) =
     await expect(cards).toHaveCount(1);
     await expect.soft(page).toHaveScreenshot("06-back-restores-search.png");
     await pause(page);
+  });
+
+  // Stars (spec §4.7) live in localStorage, which persists across the steps of this test.
+  const star = page.getByRole("button", { name: "Star this skill" });
+  const sidebar = page.locator("nav.sidebar > a");
+  const starred = page.locator("section.starred");
+  const inTests = "/repos/JetBrains-kotlin?skill=.claude%2Fskills%2Fbuild-tools-bump-gradle-in-tests%2FSKILL.md";
+  const byName = [
+    /analysis-api-create-cherry-pick-issue/,
+    /analysis-api-mark-internal-apis/,
+    /build-bump-gradle-version/,
+    /build-tools-bump-gradle-api/,
+    /build-tools-bump-gradle-in-tests/,
+    /minimize-repro-for-diagnostic-test/,
+  ];
+
+  await test.step("07 starring a skill lists it first in the sidebar", async () => {
+    await page.goto(inTests);
+    await expect(star).toHaveAttribute("aria-pressed", "false");
+    await expect(star).toHaveText("☆ Star");
+    await expect(sidebar).toHaveText(byName);
+    await pause(page);
+    await star.click();
+    await expect(star).toHaveAttribute("aria-pressed", "true");
+    await expect(star).toHaveText("★ Starred");
+    await expect(sidebar).toHaveText([byName[4], byName[0], byName[1], byName[2], byName[3], byName[5]]);
+    await expect(sidebar.first().getByRole("img", { name: "Starred" })).toBeVisible();
+    await expect(page.getByRole("img", { name: "Starred" })).toHaveCount(1);
+    await expect.soft(page).toHaveScreenshot("07-starred-first.png");
+    await pause(page);
+  });
+
+  await test.step("08 the star survives a reload", async () => {
+    await page.reload();
+    await expect(star).toHaveAttribute("aria-pressed", "true");
+    await expect(sidebar.first()).toHaveText(byName[4]);
+  });
+
+  await test.step("09 the home page shows the starred skills widget", async () => {
+    await page.getByRole("link", { name: "Skill Atlas" }).click();
+    await expect(page).toHaveURL("/");
+    await expect(starred.getByRole("heading")).toHaveText("Starred skills");
+    await expect(starred.getByRole("listitem")).toHaveText(["build-tools-bump-gradle-in-tests JetBrains/kotlin"]);
+    await expect(cards).toHaveCount(4);
+    await expect.soft(page).toHaveScreenshot("08-gallery-starred.png");
+    await pause(page);
+    await starred.getByRole("link", { name: "build-tools-bump-gradle-in-tests" }).click();
+    await expect(page).toHaveURL(inTests);
+  });
+
+  await test.step("10 unstarring removes the widget and restores name order", async () => {
+    await star.click();
+    await expect(star).toHaveAttribute("aria-pressed", "false");
+    await expect(sidebar).toHaveText(byName);
+    await page.goto("/");
+    await expect(cards).toHaveCount(4);
+    await expect(starred).toHaveCount(0);
   });
 });

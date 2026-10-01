@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
+import type { Skill } from "@/lib/atlas";
 import type { SkillText } from "@/lib/filter";
 import { cardHref, matchRepo, type RepoSummary } from "@/lib/repos";
 
-export type GalleryRepo = { summary: RepoSummary; skills: SkillText[]; error?: boolean };
+// path is only for the starred-skills widget (spec §4.7); the search never looks at it.
+export type GalleryRepo = { summary: RepoSummary; skills: (SkillText & Pick<Skill, "path">)[]; error?: boolean };
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 const categoryOrder = ["agent", "product", "test"] as const;
