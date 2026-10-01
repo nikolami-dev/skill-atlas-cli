@@ -323,7 +323,8 @@ organization contain skills, and how many each. A row opens the existing reposit
 - **Files**:
   - New: `lib/orgs.ts`, `lib/orgs.test.ts`, `app/OrgWidget.tsx`, `e2e/fixtures/orgs/JetBrains.json`.
   - Changed: `lib/atlas.ts` (`loadOrgs`), `lib/atlas.test.ts`, `app/page.tsx` (renders the widgets),
-    `app/globals.css` (a new `.org` block after the `.card` rules, not at the end of the file), and
+    `app/globals.css` (a new `.org` block after the `.gallery-search` rules, before `.cards`; not at
+    the end of the file, and not after `.card.error`, where §4.7 adds its rules), and
     `e2e/demo.spec.ts`.
 - **Fixture** `e2e/fixtures/orgs/JetBrains.json`: the summary as if the owner scan had found exactly
   the four pinned fixture scans (§7): `"owner": "JetBrains"`, `"scanned_at": "2026-10-01T09:30:00Z"`,
