@@ -1,8 +1,9 @@
 # Skill Atlas CLI — Specification
 
 ## 1. Summary
-`skill-atlas` is a command-line tool that scans a public GitHub repository, finds the
-agent skill files it contains (e.g. `SKILL.md`), and lists them with their metadata.
+`skill-atlas` is a command-line tool that scans a public GitHub repository, or every repository
+of an owner (an organization such as JetBrains, or a user), finds the agent skill files they
+contain (e.g. `SKILL.md`), and lists them with their metadata.
 
 ## 2. Tech constraints
 - Language: Go (latest stable). Single static binary named `skill-atlas`.
@@ -21,6 +22,8 @@ agent skill files it contains (e.g. `SKILL.md`), and lists them with their metad
 - `<github-url>` (required): HTTPS URL of a GitHub repo, e.g. `https://github.com/JetBrains/kotlin`.
   Accept optional trailing `/`, `.git`, or `/tree/<branch>/...` suffix; use the given
   branch if present, otherwise the repo's default branch.
+- An **owner URL** `https://github.com/{owner}` (optional trailing `/`, nothing else) scans every
+  repository of that owner instead: see §3.2. Every other URL shape keeps the behaviour below.
 - `--json` (optional): print JSON instead of a table.
 - Missing/invalid URL → print usage to stderr, exit code 2.
 
@@ -72,19 +75,87 @@ agent skill files it contains (e.g. `SKILL.md`), and lists them with their metad
 - No skills found → print `Found 0 skills in {owner}/{repo}`, exit code 0.
 - Network/API error → message to stderr, exit code 1.
 
+### 3.2 Owner scan: `skill-atlas scan https://github.com/{owner} [--json]`
+Scans every repository of an organization (e.g. `https://github.com/JetBrains`) or a user.
+
+**Repositories**
+- List them with `GET /users/{owner}/repos?type=owner&per_page=100&page={n}` for n = 1, 2, …,
+  until a page is empty. This endpoint works for organizations and users alike.
+- Skip forks (`"fork": true`): their skills belong to the upstream repository. Archived
+  repositories are included.
+- Scan each repository on its `default_branch` from the listing (no extra lookup), exactly as §3.1
+  does: same detection, duplicates, categories and fields.
+- Do NOT use GitHub code search: it is incomplete (`org:JetBrains filename:SKILL.md` finds 1 of the
+  6 skills of `JetBrains/android` that the tree listing finds), limited to 10 requests per minute,
+  and capped at 1000 results.
+- Repositories are scanned concurrently. The one request limit of §2 (~10) covers all requests of
+  all repositories together.
+
+**Errors**
+- An empty repository (the tree request answers HTTP 409) has 0 skills. It is not an error.
+- Any other error in one repository: print `skill-atlas: {owner}/{repo}: {error}` to stderr, leave
+  that repository out of the summary (including `repos_scanned`), and go on with the others. The
+  output and storage below still happen; the exit code is then 1.
+- A rate-limit error (§2) in any repository fails the whole scan: print the rate-limit message,
+  exit code 1, and write NO files.
+- Unknown owner (the listing answers 404) → message to stderr, exit code 1.
+
+**Storage**
+- For each repository with at least 1 skill: `~/.skill-atlas/{owner}-{repo}.json`, byte-identical
+  to what `skill-atlas scan https://github.com/{owner}/{repo}` writes (§3.1).
+- A repository with 0 skills gets no file. An existing file of an earlier scan is left untouched.
+- The summary `~/.skill-atlas/orgs/{owner}.json` (create `orgs/` if missing, overwrite the file),
+  indented like the index files:
+  ```json
+  {
+    "owner": "JetBrains",
+    "scanned_at": "2026-10-01T09:30:00Z",
+    "repos_scanned": 683,
+    "repos": [
+      { "repo": "JetBrains/MPS", "file": "JetBrains-MPS", "skills": 41 }
+    ]
+  }
+  ```
+  | Field           | Meaning |
+  |-----------------|---------|
+  | `owner`         | `{owner}` as written in the URL |
+  | `scanned_at`    | when the scan finished, UTC, RFC 3339 with seconds |
+  | `repos_scanned` | non-fork repositories scanned without error, including those with 0 skills |
+  | `repos`         | ONLY the repositories with at least 1 skill, sorted by `skills` descending, then `repo` |
+  | `repos[].repo`  | `{owner}/{name}`, `name` from the listing |
+  | `repos[].file`  | the index file name without `.json`, i.e. `{owner}-{name}` |
+  | `repos[].skills`| number of skills in that index file |
+
+**Output (stdout)**
+- Default: a table with columns `REPO | SKILLS`, one row per entry of `repos`, in that order,
+  followed by `Found N skills in M of K repositories of {owner}` (N = sum of `skills`,
+  M = number of `repos`, K = `repos_scanned`). With no repository with skills, only that line.
+- With `--json`: the same JSON that is written to the summary file.
+
 ## 4. Out of scope
-- Private repos beyond what `GITHUB_TOKEN` gives access to.
+- Private repos beyond what `GITHUB_TOKEN` gives access to. An owner scan lists public
+  repositories only.
 - Non-GitHub hosts.
 - Other commands (only `scan` for now).
+- Owner scan: forks, incremental rescans (only changed repositories), pinning an owner scan to a
+  point in time, deleting index files of repositories that no longer have skills, a code-search
+  shortcut, filtering repositories by name or topic.
 
 ## 5. Testing
 
 ### Unit tests
-- URL parsing (plain, trailing slash, `.git`, `/tree/<branch>/...`, invalid).
+- URL parsing (plain, trailing slash, `.git`, `/tree/<branch>/...`, owner-only with and without a
+  trailing slash, invalid).
 - Skill file matching (`SKILL.md`, `skills.md`, `Skill.MD` match; `SKILL.txt`, `MYSKILL.md` do not).
 - Frontmatter parsing, including the directory-name fallback and skipping files without frontmatter.
 - Categories (incl. a skill folder named `*-tests` under `.agents/` staying `agent`).
 - Merging identical copies into one skill.
+- Owner scan (§3.2) against a fake GitHub API (`httptest`; the API base URL is a variable for this):
+  listing pages read until an empty page; forks skipped; an empty repository (409) counts as scanned
+  with 0 skills; a repository with 0 skills gets no index file; the index file of a repository with
+  skills equals the single-repository scan's; the summary's fields and order; the `Found …` line
+  and `--json` output; a failing repository → exit code 1, reported on stderr, left out of the
+  summary, the others still stored; a rate-limit error → exit code 1 and no files written.
 
 ### E2E tests
 Behind build tag `e2e` (`go test -tags e2e ./...`). Every skill in every test must have
@@ -116,9 +187,9 @@ Actions token's 1,000 an hour per repository.
   - Result: 172 KB for all four repos. The replayed `--json` output of every pinned case is
     byte-identical to a live scan (checked when recording).
 - The "Default branch" case is the only live test (besides any owner-scan test, which can't be
-  pinned). It uses the small `JetBrains/koog` (11 requests), so a whole E2E run makes 11 API
-  requests (measured 2026-10-01), and with the Actions token CI can run
-  about 90 times an hour.
+  pinned). It uses the small `JetBrains/koog` (11 requests). With the "Owner scan" case (5
+  requests), a whole E2E run makes 16 API requests (measured 2026-10-01), so with the Actions token
+  CI can run about 60 times an hour.
 
 | Case | URL | Expect |
 |------|-----|--------|
@@ -128,9 +199,14 @@ Actions token's 1,000 an hour per repository.
 | Part of the product | same MPS commit | Exactly 32 skills have a path under `plugins/mcp-tools/resources/jetbrains/mps/agents/mcp/skills/`; exactly those have `product` in `categories`. |
 | Test data | `https://github.com/JetBrains/koog/tree/16d83270f8a7f25358ae0165466f14e70416c428` | Exactly 4 skills: 2 under `.claude/skills/` with `[agent]`, 2 under `integration-tests/src/jvmTest/resources/skills/` with `[test]`. `docs/docs/skills.md` (no frontmatter) is not listed. |
 | Unusual folder | `https://github.com/JetBrains/android/tree/4f0a5e1cb653c29f81c6b77eff885a6e81622cf4` | Exactly 6 skills, all under `agent/skills/` with `[agent]`. `agent/skills/android-studio-evals/SKILL.md` is named `write-evals` (frontmatter wins over folder name). |
+| Owner scan | `https://github.com/nikolami-dev` (a small owner; unpinned like "Default branch", because an owner's repositories can't be pinned) | Exit code 0. `~/.skill-atlas/orgs/nikolami-dev.json` exists and equals stdout of `--json`; `repos_scanned` ≥ 1; `repos` contains `nikolami-dev/skill-atlas-cli` with `skills` ≥ 1; every `repos[].file` has an index file with exactly `skills` entries. A JetBrains-wide scan (~1–2k requests) does not fit CI's token limit of 1000 requests per hour, so it is checked manually (§6). |
 
 ## 6. Definition of Done
 - All tests pass locally
+- Manual owner scan: `GITHUB_TOKEN=… skill-atlas scan https://github.com/JetBrains` exits 0, and its
+  summary lists at least 20 repositories with skills, including `JetBrains/kotlin`, `JetBrains/MPS`,
+  `JetBrains/koog` and `JetBrains/android`. The PR records the numbers it printed (the `Found …`
+  line) and how long it took.
 - A pull request is open and CI is green for its latest commit
 - Red CI: read the logs, fix, push to the same branch again
 
