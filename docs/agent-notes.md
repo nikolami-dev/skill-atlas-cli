@@ -59,8 +59,9 @@ Last updated: 2026-10-01
   that account. In CI, `API rate limit exceeded for user ID …` means that budget is used up
   elsewhere, and `GET /rate_limit` may still report it as full.
 - Pin every E2E test with exact expectations to a commit (`https://github.com/<owner>/<repo>/tree/<sha>`),
-  so upstream changes can't turn CI red. The only live-URL test is `TestScanDefaultBranch`, which
-  covers the default-branch lookup and only asserts that at least one skill is found.
+  so upstream changes can't turn CI red. Only two tests use live, unpinned URLs, with loose
+  assertions: `TestScanDefaultBranch` (the default-branch lookup, at least one skill) and
+  `TestScanOwner` (the owner scan of a small owner, `.spec/cli.md` §3.2, which can't be pinned).
 - When checking server-rendered pages with `curl`, strip React's `<!-- -->` text separators first
   (`sed 's/<!-- -->//g'`). Otherwise `76%` shows up as `76<!-- -->%` and a grep finds nothing.
 - Next.js client state mirrored into the URL with `history.replaceState` must take its initial
