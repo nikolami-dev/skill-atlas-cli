@@ -47,6 +47,18 @@ jobs:
             echo "e2e=true" >> "$GITHUB_OUTPUT"
           fi
 
+      # Shows which token the E2E tests get and how much of its hourly budget is left
+      # (GET /rate_limit itself is free).
+      - name: E2E token and API budget
+        if: steps.changes.outputs.e2e == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.E2E_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          SOURCE: ${{ secrets.E2E_GITHUB_TOKEN != '' && 'the E2E_GITHUB_TOKEN secret' || 'the Actions token (E2E_GITHUB_TOKEN is not set)' }}
+        run: |
+          echo "Token: $SOURCE"
+          curl -sS -H "Authorization: Bearer $GITHUB_TOKEN" https://api.github.com/rate_limit |
+            jq -r 'if .resources then .resources.core | "Budget: \(.remaining)/\(.limit) left, resets \(.reset | todate)" else "rate_limit: \(.message)" end' || true
+
       - name: E2E tests (JetBrains repos)
         if: steps.changes.outputs.e2e == 'true'
         run: go test -tags e2e -v ./...
