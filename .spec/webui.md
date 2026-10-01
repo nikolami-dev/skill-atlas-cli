@@ -296,8 +296,8 @@ organization contain skills, and how many each. A row opens the existing reposit
   - the heading `<h2>{owner} organization</h2>`;
   - a line `M of K repositories have skills · N skills · scanned YYYY-MM-DD`, where M = number of
     `repos`, K = `repos_scanned`, N = sum of `repos[].skills`, and the date is the UTC date of
-    `scanned_at` (`· scanned …` omitted if `scanned_at` doesn't parse). Counts use the plural rule of
-    §4.6 (`1 repository`, `1 skill`);
+    `scanned_at` (`· scanned …` omitted if `scanned_at` doesn't parse). `N skills` uses the plural
+    rule of §4.6 (`1 skill`); `M of K repositories have skills` is always written in the plural;
   - a list (`<ul>`, a responsive grid `repeat(auto-fill, minmax(220px, 1fr))`) with one row per entry
     of `repos`, in file order: the repository name `repo` and `N skills` (`1 skill`);
   - a row is a link to `repoPath(file)` (§4.5), i.e. `/repos/{owner}-{repo}`, ONLY when `file` is one
