@@ -1,6 +1,6 @@
 # Review a pull request
 
-Review this PR and submit a verdict with inline comments.
+Review this PR and post its findings in one comment.
 
 ## 1. Investigate before judging
 
@@ -25,26 +25,21 @@ Observations below this bar are investigation, not report: drop them. They cost 
 attention without changing their actions, and reporting them trains readers to skim your real
 findings.
 
-## 3. Post each finding as an inline comment
+## 3. Post all findings in one comment
 
-- Three short parts: problem, failure scenario, suggested fix.
-- A finding about the change as a whole anchors on its most representative line.
-- Prefix a finding with `Blocking:` when it must be fixed before merge.
+- Post every finding in a single PR comment, and nothing else: no inline comments, no review
+  verdict, no greeting or summary. `gh pr comment <number> --body-file findings.md`
+- Each finding has three short parts (problem, failure scenario, suggested fix) and anchors on a
+  `path:line`. A finding about the change as a whole anchors on its most representative line.
+- Prefix a finding with `Blocking:` when it must be fixed before merge, and list Blocking findings
+  first:
 
-## 4. Verdict
-
-- **Request changes** if any finding is Blocking; otherwise **Approve**, even with findings posted.
-- The review body is exactly one warm, friendly, short sentence stating the outcome only: approval
-  when there are no blocking findings, or request changes when blocking inline findings must be
-  addressed before merge. Never praise, justify, summarize, or restate inline comments.
-
-## 5. Submitting
-
-- Submit the verdict, the body and all inline comments as one review:
-  `gh api repos/{owner}/{repo}/pulls/<number>/reviews --input review.json`, where `review.json` is
-  `{"event": "APPROVE" | "REQUEST_CHANGES", "body": "…", "comments": [{"path": "…", "line": N, "side": "RIGHT", "body": "…"}]}`.
-- Anchor inline comments on lines inside the diff; GitHub rejects any other line.
-- GitHub doesn't let a PR's author approve or request changes on their own PR. If it rejects the
-  event for that reason, submit the same review with `"event": "COMMENT"`.
+  ```markdown
+  **Blocking:** `webui/app/page.tsx:42`
+  - Problem: …
+  - Failure scenario: …
+  - Fix: …
+  ```
+- No findings: post nothing.
 - Never add the `approve-screenshots` label or approve workflow runs: accepting screenshot changes
   is the human reviewer's call (see `docs/agent-notes.md`).
