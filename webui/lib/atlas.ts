@@ -1,6 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { parseOrgSummary, type OrgSummary } from "./orgs.ts";
 
 // Skill is one entry of a skill-atlas CLI index file (~/.skill-atlas/{owner}-{repo}.json).
 // paths and categories are missing in indexes written by older CLI versions.
@@ -35,6 +36,29 @@ export async function loadSkills(repo: string): Promise<Skill[] | null> {
   const skills = JSON.parse(await readFile(/*turbopackIgnore: true*/ join(atlasDir(), repo + ".json"), "utf8"));
   if (!Array.isArray(skills)) throw new Error(`${repo}.json is not a JSON array`);
   return (skills as Skill[]).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// loadOrgs returns the owner-scan summaries in orgs/ (spec §3.3), sorted by file name (without .json).
+// org is null for an unreadable or invalid file. A missing directory means no summaries.
+export async function loadOrgs(): Promise<{ file: string; org: OrgSummary | null }[]> {
+  const dir = join(atlasDir(), "orgs");
+  let entries: string[];
+  try {
+    entries = await readdir(/*turbopackIgnore: true*/ dir);
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw e;
+  }
+  const files = entries.filter((f) => f.endsWith(".json")).map((f) => f.slice(0, -5)).sort((a, b) => a.localeCompare(b));
+  return Promise.all(
+    files.map(async (file) => {
+      try {
+        return { file, org: parseOrgSummary(await readFile(/*turbopackIgnore: true*/ join(dir, file + ".json"), "utf8")) };
+      } catch {
+        return { file, org: null };
+      }
+    }),
+  );
 }
 
 // repoFromParam turns a /repos/[repo] URL segment back into an index file name. The result is only

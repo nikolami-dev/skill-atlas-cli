@@ -16,11 +16,13 @@ import (
 	"strings"
 	"sync"
 	"text/tabwriter"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
 
-const apiBase = "https://api.github.com"
+// apiBase is a variable so tests can point it at a fake API.
+var apiBase = "https://api.github.com"
 
 const usage = "usage: skill-atlas scan <github-url> [--json]"
 
@@ -37,8 +39,29 @@ type Skill struct {
 	CommitDate  string   `json:"commit_date"`
 }
 
+// OwnerSummary is the result of an owner scan (spec §3.2), stored in ~/.skill-atlas/orgs/{owner}.json.
+type OwnerSummary struct {
+	Owner        string      `json:"owner"`
+	ScannedAt    string      `json:"scanned_at"`
+	ReposScanned int         `json:"repos_scanned"`
+	Repos        []RepoCount `json:"repos"`
+}
+
+// RepoCount is one repository with skills in an OwnerSummary; File is its index file name without .json.
+type RepoCount struct {
+	Repo   string `json:"repo"`
+	File   string `json:"file"`
+	Skills int    `json:"skills"`
+}
+
 // sem bounds the number of concurrent GitHub API requests.
 var sem = make(chan struct{}, 10)
+
+var (
+	errRateLimit = errors.New("GitHub API rate limit exceeded; set GITHUB_TOKEN to raise the limit")
+	// errEmptyRepo is GitHub's answer (HTTP 409) to listing the tree of an empty repository.
+	errEmptyRepo = errors.New("repository is empty")
+)
 
 func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
@@ -76,19 +99,17 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "%v\n%s\n", err, usage)
 		return 2
 	}
+	if repo == "" {
+		return scanOwner(owner, jsonOut, stdout, stderr)
+	}
 
 	skills, err := scan(owner, repo, branch)
 	if err != nil {
 		fmt.Fprintln(stderr, "skill-atlas:", err)
 		return 1
 	}
-	data, err := json.MarshalIndent(skills, "", "  ")
-	if err != nil {
-		fmt.Fprintln(stderr, "skill-atlas:", err)
-		return 1
-	}
-	data = append(data, '\n')
-	if err := store(owner, repo, data); err != nil {
+	data := toJSON(skills)
+	if err := store(owner+"-"+repo+".json", data); err != nil {
 		fmt.Fprintln(stderr, "skill-atlas: storing results:", err)
 		return 1
 	}
@@ -115,6 +136,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 
 // parseRepoURL accepts https://github.com/{owner}/{repo} with an optional trailing "/",
 // ".git" or "/tree/{branch}/..." suffix. branch is empty when not given in the URL.
+// An owner URL https://github.com/{owner} returns an empty repo (an owner scan, spec §3.2).
 // ponytail: branch is the first segment after /tree/, so branch names containing "/" aren't supported.
 func parseRepoURL(raw string) (owner, repo, branch string, err error) {
 	u, err := url.Parse(raw)
@@ -122,6 +144,9 @@ func parseRepoURL(raw string) (owner, repo, branch string, err error) {
 		return "", "", "", fmt.Errorf("invalid GitHub URL %q", raw)
 	}
 	parts := strings.Split(strings.Trim(u.Path, "/"), "/")
+	if len(parts) == 1 && parts[0] != "" {
+		return parts[0], "", "", nil
+	}
 	if len(parts) < 2 || parts[0] == "" || parts[1] == "" {
 		return "", "", "", fmt.Errorf("invalid GitHub URL %q: expected https://github.com/{owner}/{repo}", raw)
 	}
@@ -207,6 +232,109 @@ func scan(owner, repo, branch string) ([]Skill, error) {
 	}
 	sort.Slice(skills, func(i, j int) bool { return skills[i].Path < skills[j].Path })
 	return skills, nil
+}
+
+type ownerRepo struct {
+	Name          string `json:"name"`
+	DefaultBranch string `json:"default_branch"`
+	Fork          bool   `json:"fork"`
+}
+
+// scanOwner scans every non-fork repository of an organization or user (spec §3.2), stores the
+// index of each repository with skills plus the summary orgs/{owner}.json, and prints the summary.
+// A failing repository is reported and left out; a rate-limit error fails the scan without writing.
+func scanOwner(owner string, jsonOut bool, stdout, stderr io.Writer) int {
+	repos, err := listOwnerRepos(owner)
+	if err != nil {
+		fmt.Fprintln(stderr, "skill-atlas:", err)
+		return 1
+	}
+	results := make([][]Skill, len(repos))
+	errs := make([]error, len(repos))
+	var wg sync.WaitGroup
+	for i, r := range repos {
+		wg.Go(func() {
+			results[i], errs[i] = scan(owner, r.Name, r.DefaultBranch)
+			if errors.Is(errs[i], errEmptyRepo) {
+				results[i], errs[i] = nil, nil
+			}
+		})
+	}
+	wg.Wait()
+	if slices.ContainsFunc(errs, func(err error) bool { return errors.Is(err, errRateLimit) }) {
+		fmt.Fprintln(stderr, "skill-atlas:", errRateLimit)
+		return 1
+	}
+
+	code := 0
+	summary := OwnerSummary{Owner: owner, Repos: []RepoCount{}}
+	for i, r := range repos {
+		if errs[i] != nil {
+			fmt.Fprintf(stderr, "skill-atlas: %s/%s: %v\n", owner, r.Name, errs[i])
+			code = 1
+			continue
+		}
+		summary.ReposScanned++
+		if len(results[i]) == 0 {
+			continue
+		}
+		file := owner + "-" + r.Name
+		if err := store(file+".json", toJSON(results[i])); err != nil {
+			fmt.Fprintln(stderr, "skill-atlas: storing results:", err)
+			return 1
+		}
+		summary.Repos = append(summary.Repos, RepoCount{Repo: owner + "/" + r.Name, File: file, Skills: len(results[i])})
+	}
+	sort.Slice(summary.Repos, func(i, j int) bool {
+		a, b := summary.Repos[i], summary.Repos[j]
+		if a.Skills != b.Skills {
+			return a.Skills > b.Skills
+		}
+		return a.Repo < b.Repo
+	})
+	summary.ScannedAt = time.Now().UTC().Format(time.RFC3339)
+	data := toJSON(summary)
+	if err := store(filepath.Join("orgs", owner+".json"), data); err != nil {
+		fmt.Fprintln(stderr, "skill-atlas: storing results:", err)
+		return 1
+	}
+
+	if jsonOut {
+		stdout.Write(data)
+		return code
+	}
+	total := 0
+	if len(summary.Repos) > 0 {
+		tw := tabwriter.NewWriter(stdout, 0, 0, 2, ' ', 0)
+		fmt.Fprintln(tw, "REPO\tSKILLS")
+		for _, r := range summary.Repos {
+			fmt.Fprintf(tw, "%s\t%d\n", r.Repo, r.Skills)
+			total += r.Skills
+		}
+		tw.Flush()
+	}
+	fmt.Fprintf(stdout, "Found %d skills in %d of %d repositories of %s\n", total, len(summary.Repos), summary.ReposScanned, owner)
+	return code
+}
+
+// listOwnerRepos returns the owner's non-fork repositories. /users/{owner}/repos also works for
+// organizations; pages are read until an empty one.
+func listOwnerRepos(owner string) ([]ownerRepo, error) {
+	var repos []ownerRepo
+	for page := 1; ; page++ {
+		var batch []ownerRepo
+		if err := getJSON(fmt.Sprintf("/users/%s/repos?type=owner&per_page=100&page=%d", url.PathEscape(owner), page), &batch); err != nil {
+			return nil, err
+		}
+		if len(batch) == 0 {
+			return repos, nil
+		}
+		for _, r := range batch {
+			if !r.Fork {
+				repos = append(repos, r)
+			}
+		}
+	}
 }
 
 type treeEntry struct {
@@ -381,7 +509,10 @@ func get(apiPath, accept string) ([]byte, error) {
 	}
 	if resp.StatusCode == http.StatusTooManyRequests ||
 		(resp.StatusCode == http.StatusForbidden && resp.Header.Get("X-RateLimit-Remaining") == "0") {
-		return nil, errors.New("GitHub API rate limit exceeded; set GITHUB_TOKEN to raise the limit")
+		return nil, errRateLimit
+	}
+	if resp.StatusCode == http.StatusConflict {
+		return nil, fmt.Errorf("GET %s: %s: %w", apiPath, resp.Status, errEmptyRepo)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("GET %s: %s", apiPath, resp.Status)
@@ -405,16 +536,26 @@ func escapePath(p string) string {
 	return strings.Join(parts, "/")
 }
 
-func store(owner, repo string, data []byte) error {
+// toJSON is the indented JSON written to the storage files and printed by --json.
+func toJSON(v any) []byte {
+	data, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		panic(err) // only plain structs and slices are marshalled
+	}
+	return append(data, '\n')
+}
+
+// store writes data to ~/.skill-atlas/{name}, creating the directories it needs.
+func store(name string, data []byte) error {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return err
 	}
-	dir := filepath.Join(home, ".skill-atlas")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	p := filepath.Join(home, ".skill-atlas", name)
+	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(dir, owner+"-"+repo+".json"), data, 0o644)
+	return os.WriteFile(p, data, 0o644)
 }
 
 func truncate(s string, n int) string {

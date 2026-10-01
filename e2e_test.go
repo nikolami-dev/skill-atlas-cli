@@ -77,6 +77,40 @@ func TestScanDefaultBranch(t *testing.T) {
 	}
 }
 
+// TestScanOwner covers the owner scan (spec §3.2) on a small owner. Unpinned, because an owner's
+// repositories can't be pinned to a commit, so it only asserts the owner's own skill repository.
+// A JetBrains-wide scan doesn't fit CI's token limit of 1000 requests per hour.
+func TestScanOwner(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	var stdout, stderr bytes.Buffer
+	if code := run([]string{"scan", "https://github.com/nikolami-dev", "--json"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("exit code %d: %s", code, stderr.String())
+	}
+	dir := filepath.Join(home, ".skill-atlas")
+	stored, err := os.ReadFile(filepath.Join(dir, "orgs", "nikolami-dev.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(stored, stdout.Bytes()) {
+		t.Error("orgs/nikolami-dev.json differs from stdout")
+	}
+	var s OwnerSummary
+	if err := json.Unmarshal(stored, &s); err != nil {
+		t.Fatalf("invalid summary: %v", err)
+	}
+	if s.ReposScanned < 1 || !slices.ContainsFunc(s.Repos, func(r RepoCount) bool { return r.Repo == "nikolami-dev/skill-atlas-cli" && r.Skills >= 1 }) {
+		t.Errorf("summary = %+v, want nikolami-dev/skill-atlas-cli with at least 1 skill", s)
+	}
+	for _, r := range s.Repos {
+		data, err := os.ReadFile(filepath.Join(dir, r.File+".json"))
+		var skills []Skill
+		if err != nil || json.Unmarshal(data, &skills) != nil || len(skills) != r.Skills {
+			t.Errorf("%s.json: want %d skills (err = %v)", r.File, r.Skills, err)
+		}
+	}
+}
+
 // MPS keeps identical copies of every skill in .agents/skills and .claude/skills.
 func TestScanMPSDuplicates(t *testing.T) {
 	useRecording(t, "JetBrains-MPS")
