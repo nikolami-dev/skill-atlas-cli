@@ -51,8 +51,8 @@ Last updated: 2026-10-01
   commands there). CI (`.github/workflows/ci.yml`) has two jobs, `cli` and `webui`, and `main`
   requires both. The `webui` job uses Node 24.
 - The Go E2E tests (`go test -tags e2e ./...`) replay recorded GitHub API responses
-  (`testdata/e2e/`, `.spec/cli.md` §5), so they need no token. Only the default-branch case is live
-  (11 requests). After changing the CLI's API requests, re-record with
+  (`testdata/e2e/`, `.spec/cli.md` §5), so they need no token. Only the default-branch and owner-scan
+  cases are live (16 requests). After changing the CLI's API requests, re-record with
   `E2E_RECORD=1 GITHUB_TOKEN=$(gh auth token) go test -tags e2e ./...` (501 requests). Then check
   that the replayed `--json` output still equals a live scan, and commit the `.json.gz` files.
 - A PAT's rate limit belongs to its user account and is shared with every tool and session using

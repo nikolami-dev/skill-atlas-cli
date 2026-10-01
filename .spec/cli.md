@@ -187,9 +187,9 @@ Actions token's 1,000 an hour per repository.
   - Result: 172 KB for all four repos. The replayed `--json` output of every pinned case is
     byte-identical to a live scan (checked when recording).
 - The "Default branch" case is the only live test (besides any owner-scan test, which can't be
-  pinned). It uses the small `JetBrains/koog` (11 requests), so a whole E2E run makes 11 API
-  requests (measured 2026-10-01), and with the Actions token CI can run
-  about 90 times an hour.
+  pinned). It uses the small `JetBrains/koog` (11 requests). With the "Owner scan" case (5
+  requests), a whole E2E run makes 16 API requests (measured 2026-10-01), so with the Actions token
+  CI can run about 60 times an hour.
 
 | Case | URL | Expect |
 |------|-----|--------|
