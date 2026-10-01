@@ -355,6 +355,23 @@ header .navbar a.active {
   color: var(--muted);
 }
 
+.starred .empty {
+  margin: 0;
+  padding: 0;
+}
+
+.starred .unstar {
+  margin-left: 4px;
+  font: inherit;
+  font-size: 12px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--subtle);
+  color: var(--fg);
+  cursor: pointer;
+}
+
 .similar {
   margin: 0 0 24px;
   padding-bottom: 16px;
