@@ -244,6 +244,48 @@ header .navbar a.active {
   cursor: pointer;
 }
 
+/* Organization widget (spec §4.8) */
+.org {
+  margin: 0 0 20px;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--subtle);
+}
+
+.org h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.org p {
+  margin: 2px 0 0;
+  font-size: 13px;
+}
+
+.org ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 4px 16px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+}
+
+.org li {
+  overflow-wrap: anywhere;
+}
+
+.org .muted {
+  color: var(--muted);
+}
+
+.org .error {
+  margin: 0;
+  color: var(--error);
+}
+
 .cards {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));

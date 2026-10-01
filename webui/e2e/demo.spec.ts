@@ -10,10 +10,13 @@ import { expect, test, type Page } from "@playwright/test";
 // toHaveScreenshot already waits for a stable page, and a sleep would hide a missing wait.
 const pause = (page: Page, ms = 700) => page.waitForTimeout(ms);
 
-test("repository gallery, search, skills, similar skills and stars", async ({ page }) => {
+test("repository gallery, search, skills, similar skills, stars and organization widget", async ({ page }) => {
   const cards = page.locator("a.card");
   const search = page.getByRole("searchbox", { name: "Search repositories and skills" });
   const starred = page.locator("section.starred");
+  // The organization widget (spec §4.8), from e2e/fixtures/orgs/JetBrains.json.
+  const org = page.locator("section.org");
+  const orgRows = ["JetBrains/MPS 41 skills", "JetBrains/android 6 skills", "JetBrains/kotlin 6 skills", "JetBrains/koog 4 skills"];
 
   await test.step("01 gallery shows every repository", async () => {
     await page.goto("/");
@@ -22,6 +25,10 @@ test("repository gallery, search, skills, similar skills and stars", async ({ pa
     await expect(starred.getByRole("heading")).toHaveText("Starred skills");
     await expect(starred.locator(".empty")).toHaveText("No starred skills");
     await expect(starred.getByRole("listitem")).toHaveCount(0);
+    await expect(org).toHaveCount(1);
+    await expect(org.getByRole("heading")).toHaveText("JetBrains organization");
+    await expect(org.locator("p")).toHaveText("4 of 683 repositories have skills · 57 skills · scanned 2026-10-01");
+    await expect(org.getByRole("listitem")).toHaveText(orgRows);
     await expect.soft(page).toHaveScreenshot("01-gallery.png");
     await pause(page);
   });
@@ -32,6 +39,7 @@ test("repository gallery, search, skills, similar skills and stars", async ({ pa
     await expect(page.locator(".filter-status")).toHaveText("1 of 4 repositories");
     await expect(cards.first()).toContainText("3 matching skills");
     await expect(page).toHaveURL("/?q=gradle");
+    await expect(org.getByRole("listitem")).toHaveText(orgRows); // the search doesn't filter the widget
     await expect.soft(page).toHaveScreenshot("02-search-gradle.png");
     await pause(page);
   });
@@ -146,5 +154,16 @@ test("repository gallery, search, skills, similar skills and stars", async ({ pa
     await star.click();
     await expect(star).toHaveText("☆ Star");
     await expect(sidebar).toHaveText(byName);
+  });
+
+  await test.step("12 an organization widget row opens the repository", async () => {
+    await page.goto("/");
+    await expect(org.getByRole("listitem")).toHaveText(orgRows);
+    await expect(cards).toHaveCount(4);
+    await org.getByRole("link", { name: "JetBrains/kotlin" }).click();
+    await expect(page).toHaveURL("/repos/JetBrains-kotlin");
+    await expect(page.locator("header .crumb")).toHaveText("› JetBrains/kotlin");
+    await expect(page.locator("nav.sidebar > a")).toHaveCount(6);
+    await pause(page);
   });
 });

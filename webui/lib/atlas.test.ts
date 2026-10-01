@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { listRepos, loadSkills, rawUrl, stripFrontmatter } from "./atlas.ts";
+import { listRepos, loadOrgs, loadSkills, rawUrl, stripFrontmatter } from "./atlas.ts";
 import type { Skill } from "./atlas.ts";
 
 const skill = (name: string, path: string): Skill =>
@@ -25,6 +25,22 @@ test("index loading", async () => {
 
   process.env.SKILL_ATLAS_DIR = join(dir, "missing");
   assert.deepEqual(await listRepos(), []);
+});
+
+test("organization summaries", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "atlas-"));
+  process.env.SKILL_ATLAS_DIR = dir;
+  assert.deepEqual(await loadOrgs(), []); // no orgs/ directory
+
+  const org = { owner: "JetBrains", scanned_at: "2026-10-01T09:30:00Z", repos_scanned: 2, repos: [] };
+  mkdirSync(join(dir, "orgs"));
+  writeFileSync(join(dir, "orgs", "JetBrains.json"), JSON.stringify(org));
+  writeFileSync(join(dir, "orgs", "acme.json"), JSON.stringify({ owner: 1 }));
+  writeFileSync(join(dir, "orgs", "notes.txt"), "");
+  writeFileSync(join(dir, "JetBrains-kotlin.json"), "[]");
+
+  assert.deepEqual(await loadOrgs(), [{ file: "acme", org: null }, { file: "JetBrains", org }]);
+  assert.deepEqual(await listRepos(), ["JetBrains-kotlin"]);
 });
 
 test("frontmatter and urls", () => {

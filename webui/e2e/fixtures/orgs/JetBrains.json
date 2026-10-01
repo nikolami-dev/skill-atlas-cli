@@ -1,0 +1,27 @@
+{
+  "owner": "JetBrains",
+  "scanned_at": "2026-10-01T09:30:00Z",
+  "repos_scanned": 683,
+  "repos": [
+    {
+      "repo": "JetBrains/MPS",
+      "file": "JetBrains-MPS",
+      "skills": 41
+    },
+    {
+      "repo": "JetBrains/android",
+      "file": "JetBrains-android",
+      "skills": 6
+    },
+    {
+      "repo": "JetBrains/kotlin",
+      "file": "JetBrains-kotlin",
+      "skills": 6
+    },
+    {
+      "repo": "JetBrains/koog",
+      "file": "JetBrains-koog",
+      "skills": 4
+    }
+  ]
+}

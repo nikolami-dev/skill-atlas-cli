@@ -1,11 +1,13 @@
 import { permanentRedirect } from "next/navigation";
-import { atlasDir, listRepos, loadSkills } from "@/lib/atlas";
+import { atlasDir, listRepos, loadOrgs, loadSkills } from "@/lib/atlas";
 import { repoPath, summarizeRepo } from "@/lib/repos";
+import OrgWidget from "./OrgWidget";
 import RepoGallery, { type GalleryRepo } from "./RepoGallery";
 import Shell from "./Shell";
 import StarredSkills from "./StarredSkills";
 
-// The home page: every indexed repository as a card, with an instant search (spec §4.6).
+// The home page: the starred skills (spec §4.7), one widget per owner scan (§4.8), then every
+// indexed repository as a card, with an instant search (§4.6).
 export default async function GalleryPage({ searchParams }: PageProps<"/">) {
   const sp = await searchParams;
 
@@ -30,6 +32,7 @@ export default async function GalleryPage({ searchParams }: PageProps<"/">) {
     );
   }
 
+  const orgs = await loadOrgs();
   const repos: GalleryRepo[] = await Promise.all(
     files.map(async (file) => {
       try {
@@ -46,6 +49,7 @@ export default async function GalleryPage({ searchParams }: PageProps<"/">) {
     <Shell>
       <main className="content wide gallery">
         <StarredSkills repos={repos} />
+        {orgs.map(({ file, org }) => <OrgWidget key={file} file={file} org={org} files={files} />)}
         <RepoGallery repos={repos} />
       </main>
     </Shell>
